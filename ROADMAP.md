@@ -45,7 +45,10 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - ✅ Filtro por data: `due_date_from`, `due_date_to`
   - ✅ Filtro por período: `overdue`, `today`, `this_week`, `this_month`
   - ✅ Filtro por usuário que atribuiu: `assigned_by`
-  - ✅ Ordenação: `sort_by` (created_at, due_date, title) e `order` (asc, desc)
+  - ✅ Filtro por prioridade: `priority` (baixa, media, alta, urgente)
+  - ✅ Filtro por tags: `tag_ids` (IDs separados por vírgula, ex.: `1,2,3`)
+  - ✅ Ordenação: `sort_by` (created_at, due_date, title, **priority**) e `order` (asc, desc)
+  - ✅ Listagem de tarefas que o usuário delegou: `GET /tasks/assigned` (mesmos filtros de paginação)
 
 #### 4. Notificações de Tarefas ✅
 - **Descrição**: Sistema de notificações para tarefas próximas do vencimento
@@ -122,9 +125,15 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 - **Descrição**: Tarefas que se repetem automaticamente
 - **Benefícios**: Para tarefas periódicas (diárias, semanais, mensais)
 
-#### 13. Compartilhamento de Tarefas
-- **Descrição**: Compartilhar tarefas com usuários específicos (read-only)
-- **Benefícios**: Colaboração sem atribuição
+#### 13. Compartilhamento de Tarefas ✅
+- **Descrição**: Compartilhar tarefas com outros usuários para visualização e edição colaborativa (dono da tarefa = `user_id` da tarefa; apenas o dono adiciona/remove compartilhados)
+- **Benefícios**: Colaboração sem precisar reatribuir a tarefa
+- **Status**: ✅ **Implementado**
+- **Implementação**:
+  - ✅ Relação many-to-many `task_shared_with` / `SharedWithUsers` no modelo
+  - ✅ `POST /api/v1/tasks/{id}/share` com corpo `{ "user_ids": [2,3] }`
+  - ✅ `DELETE /api/v1/tasks/{id}/share/{user_id}` para remover um usuário da lista
+  - ✅ Documentado no OpenAPI (Swagger)
 
 #### 14. Dashboard/Estatísticas
 - **Descrição**: Endpoint com estatísticas do usuário
@@ -318,14 +327,14 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 
 ### Alta Prioridade
 
-#### 1. CI/CD Pipeline
+#### 1. CI/CD Pipeline ✅
 - **Descrição**: Pipeline automatizado
 - **Benefícios**: Deploy confiável e rápido
+- **Status**: ✅ **Implementado (base)** — GitHub Actions com testes e deploy (ex.: runner self-hosted / Raspberry Pi conforme `deploy.yml`)
 - **Implementação**:
-  - GitHub Actions ou GitLab CI
-  - Stages: test, build, security scan, deploy
-  - Deploy automático em staging
-  - Deploy manual em produção
+  - ✅ GitHub Actions (`.github/workflows/ci.yml`, `deploy.yml`)
+  - ✅ Testes no CI (MySQL)
+  - ⏳ Security scan dedicado, staging separado e gates de aprovação: evolução futura
 
 #### 2. Testes Automatizados
 - **Descrição**: Suite completa de testes
@@ -421,12 +430,13 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 
 ### Alta Prioridade
 
-#### 1. Versionamento de API
+#### 1. Versionamento de API ✅ (parcial)
 - **Descrição**: Suporte a múltiplas versões
 - **Benefícios**: Evolução sem quebrar clientes
+- **Status**: ✅ **Prefixo `/api/v1`** em uso em todas as rotas da API atual
 - **Implementação**:
-  - `/api/v1`, `/api/v2`
-  - Deprecation warnings
+  - ✅ Base de rotas `/api/v1`
+  - ⏳ `/api/v2`, deprecation headers e política de convivência de versões: futuro
 
 #### 2. Respostas Consistentes
 - **Descrição**: Padronizar formato de respostas
@@ -508,27 +518,27 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 ### Fase 1 (1-2 meses)
 1. ✅ Paginação nas listagens
 2. ✅ Busca por texto
-3. ✅ Filtros avançados
+3. ✅ Filtros avançados (incl. prioridade, tags, `GET /tasks/assigned`)
 4. Logs estruturados
 5. Rate limiting
 6. Health check melhorado
-7. CI/CD básico
+7. ✅ CI/CD básico (GitHub Actions)
 
 ### Fase 2 (2-4 meses)
 1. Cache (Redis)
-2. Notificações de tarefas
-3. Filtros avançados
-4. Métricas Prometheus
-5. Refresh tokens
-6. Testes automatizados completos
+2. ✅ Notificações de tarefas
+3. Métricas Prometheus
+4. Refresh tokens
+5. Testes automatizados completos (aumentar cobertura)
 
 ### Fase 3 (4-6 meses)
-1. Prioridades de tarefas
-2. Tags customizadas
-3. Subtarefas
-4. Comentários
-5. Kubernetes deployment
-6. Webhooks
+1. ✅ Prioridades de tarefas
+2. ✅ Tags customizadas
+3. ✅ Compartilhamento de tarefas
+4. Subtarefas
+5. ✅ Comentários
+6. Kubernetes deployment
+7. Webhooks
 
 ---
 
@@ -545,14 +555,16 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 
 - ✅ **Paginação nas Listagens** (Dezembro 2025) - Implementado com suporte a `page` e `limit`, retornando metadata completa
 - ✅ **Busca por Texto nas Tarefas** (Dezembro 2025) - Busca case-insensitive em título e descrição
-- ✅ **Filtros Avançados** (Dezembro 2025) - Filtros por data, período (overdue, today, this_week, this_month), assigned_by e ordenação
+- ✅ **Filtros Avançados** (Dezembro 2025 / Maio 2026) - Filtros por data, período, `assigned_by`, **prioridade** (`priority`), **tags** (`tag_ids`), ordenação incluindo `priority`, e listagem **`GET /tasks/assigned`**
 - ✅ **Prioridades de Tarefas** (Dezembro 2025) - Campo de prioridade (baixa, média, alta, urgente) com filtro e ordenação
 - ✅ **Tags/Categorias Customizadas** (Dezembro 2025) - Sistema completo de tags com CRUD e filtros, relação many-to-many com tarefas
 - ✅ **Comentários em Tarefas** (Dezembro 2025) - Sistema completo de comentários com CRUD, controle de acesso baseado em propriedade/atribuição da tarefa
 - ✅ **CORS Configurável** (Dezembro 2025) - Middleware CORS configurável via variáveis de ambiente com suporte a origens, métodos, headers, credentials e max-age
 - ✅ **Notificações de Tarefas** (Dezembro 2024) - Sistema completo de notificações com email e Telegram, scheduler cron, histórico e configuração por usuário
+- ✅ **Compartilhamento de Tarefas** (Maio 2026) - `POST/DELETE` em `/tasks/{id}/share`, many-to-many com usuários, controle pelo dono da tarefa
+- ✅ **OpenAPI / listagens** (Maio 2026) - Parâmetros `priority`, `tag_ids` e `sort_by` com `priority` documentados em `GET /tasks` e `GET /tasks/assigned`
 
 ---
 
-**Última atualização**: Dezembro 2025
+**Última atualização**: Maio 2026
 

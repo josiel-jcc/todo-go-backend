@@ -519,6 +519,8 @@ go install github.com/dimasdanz/swag-openapi3@latest
 swag-openapi3 init -g cmd/api/main.go -o ./docs --requiredByDefault
 ```
 
+Isso atualiza `docs/openapi.json` a partir dos comentários `// @Param` nos handlers (por exemplo, `priority` e `tag_ids` em `GET /tasks` e `GET /tasks/assigned`). Rode de novo sempre que alterar a documentação Swagger nos handlers.
+
 ## Docker
 
 ### Using Docker Compose
@@ -638,8 +640,11 @@ Para ver o plano completo de melhorias futuras, consulte o arquivo [ROADMAP.md](
 
 ### Próximas Melhorias Prioritárias
 
-- [ ] Paginação nas listagens
-- [ ] Busca por texto nas tarefas
+- [x] Paginação nas listagens
+- [x] Busca por texto nas tarefas
+- [x] Filtros avançados (datas, período, `assigned_by`, prioridade, tags, ordenação)
+- [x] Listagem de tarefas delegadas (`GET /tasks/assigned`)
+- [x] Compartilhamento de tarefas (`POST/DELETE .../share`)
 - [x] Notificações de tarefas próximas do vencimento
 - [x] Suporte a múltiplos bancos de dados (SQLite, MySQL)
 - [x] Documentação Swagger/OpenAPI
