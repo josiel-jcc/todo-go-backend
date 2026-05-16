@@ -127,7 +127,9 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 // @Param        due_date_to   query     string  false  "Filter tasks with due date to (ISO 8601 format)"
 // @Param        period        query     string  false  "Filter by period (overdue, today, this_week, this_month)"
 // @Param        assigned_by   query     int     false  "Filter by user ID who assigned the task"
-// @Param        sort_by       query     string  false  "Sort field (created_at, due_date, title)"
+// @Param        priority      query     string  false  "Filter by priority (baixa, media, alta, urgente)"
+// @Param        tag_ids       query     string  false  "Filter by tag IDs, comma-separated (e.g. 1,2,3)"
+// @Param        sort_by       query     string  false  "Sort field (created_at, due_date, title, priority)"
 // @Param        order         query     string  false  "Sort order (asc, desc)"
 // @Success      200           {object}  services.PaginatedTasksResponse
 // @Failure      400           {object}  ErrorResponse
@@ -285,7 +287,9 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 // @Param        due_date_from query     string  false  "Filter tasks with due date from (ISO 8601 format)"
 // @Param        due_date_to   query     string  false  "Filter tasks with due date to (ISO 8601 format)"
 // @Param        period        query     string  false  "Filter by period (overdue, today, this_week, this_month)"
-// @Param        sort_by       query     string  false  "Sort field (created_at, due_date, title)"
+// @Param        priority      query     string  false  "Filter by priority (baixa, media, alta, urgente)"
+// @Param        tag_ids       query     string  false  "Filter by tag IDs, comma-separated (e.g. 1,2,3)"
+// @Param        sort_by       query     string  false  "Sort field (created_at, due_date, title, priority)"
 // @Param        order         query     string  false  "Sort order (asc, desc)"
 // @Success      200           {object}  services.PaginatedTasksResponse
 // @Failure      400           {object}  ErrorResponse

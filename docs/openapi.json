@@ -1650,7 +1650,23 @@
 						}
 					},
 					{
-						"description": "Sort field (created_at, due_date, title)",
+						"description": "Filter by priority (baixa, media, alta, urgente)",
+						"in": "query",
+						"name": "priority",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Filter by tag IDs, comma-separated (e.g. 1,2,3)",
+						"in": "query",
+						"name": "tag_ids",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Sort field (created_at, due_date, title, priority)",
 						"in": "query",
 						"name": "sort_by",
 						"schema": {
@@ -1864,7 +1880,23 @@
 						}
 					},
 					{
-						"description": "Sort field (created_at, due_date, title)",
+						"description": "Filter by priority (baixa, media, alta, urgente)",
+						"in": "query",
+						"name": "priority",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Filter by tag IDs, comma-separated (e.g. 1,2,3)",
+						"in": "query",
+						"name": "tag_ids",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Sort field (created_at, due_date, title, priority)",
 						"in": "query",
 						"name": "sort_by",
 						"schema": {
