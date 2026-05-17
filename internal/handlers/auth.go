@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"todo-go-backend/internal/models"
 	"todo-go-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -68,11 +69,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, AuthResponse{
 		Message: "User created successfully",
 		Token:   token,
-		User: gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-		},
+		User:    userProfileResponse(*user),
 	})
 }
 
@@ -104,10 +101,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, AuthResponse{
 		Message: "Login successful",
 		Token:   token,
-		User: gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-		},
+		User:    userProfileResponse(*user),
 	})
+}
+
+func userProfileResponse(user models.User) gin.H {
+	profile := gin.H{
+		"id":                    user.ID,
+		"username":              user.Username,
+		"email":                 user.Email,
+		"notifications_enabled": user.NotificationsEnabled,
+		"created_at":            user.CreatedAt,
+		"updated_at":            user.UpdatedAt,
+	}
+	if user.TelegramChatID != nil {
+		profile["telegram_chat_id"] = *user.TelegramChatID
+	} else {
+		profile["telegram_chat_id"] = ""
+	}
+	return profile
 }

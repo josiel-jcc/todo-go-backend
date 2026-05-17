@@ -217,6 +217,7 @@ func main() {
 		protected.DELETE("/comments/:id", commentHandler.DeleteComment)
 
 		// User routes
+		protected.GET("/users/me", userHandler.GetCurrentUser)
 		protected.GET("/users", userHandler.GetUsers)
 		protected.PUT("/users/telegram-chat-id", userHandler.UpdateTelegramChatID)
 		protected.PUT("/users/notifications-enabled", userHandler.UpdateNotificationsEnabled)
