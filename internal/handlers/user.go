@@ -219,6 +219,30 @@ func (h *UserHandler) GetNotificationDebugInfo(c *gin.Context) {
 	handleSuccess(c, http.StatusOK, "Debug information retrieved", debugInfo)
 }
 
+// GetCurrentUser returns the authenticated user's profile
+// @Summary      Get current user profile
+// @Description  Returns the authenticated user's profile including notification settings
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  models.User
+// @Failure      401  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /users/me [get]
+func (h *UserHandler) GetCurrentUser(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		handleError(c, errors.NewUserNotFoundError())
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
 // PaginatedUsersResponse represents a paginated response for users
 type PaginatedUsersResponse struct {
 	Users      []models.User `json:"users"`
