@@ -55,6 +55,7 @@ func TestCreateTask(t *testing.T) {
 		json.Unmarshal(w.Body.Bytes(), &task)
 		assert.Equal(t, "Test Task", task.Title)
 		assert.Equal(t, user.ID, task.UserID)
+		assert.Nil(t, task.AssignedBy)
 	})
 
 	t.Run("Create task for another user", func(t *testing.T) {
@@ -85,6 +86,51 @@ func TestCreateTask(t *testing.T) {
 		assert.Equal(t, otherUser.ID, task.UserID)
 		assert.Equal(t, user.ID, *task.AssignedBy)
 	})
+}
+
+func TestGetAssignedTasks(t *testing.T) {
+	setupTestDB()
+	router := setupTestRouter("test-secret")
+	user, token := createTestUser(t)
+
+	otherUser := models.User{
+		Username: "delegatee",
+		Email:    "delegatee@example.com",
+		Password: "hashed",
+	}
+	database.DB.Create(&otherUser)
+
+	// Legacy-style self task (assigned_by = creator, user_id = creator) — must not appear
+	selfAssigned := user.ID
+	selfTask := models.Task{
+		Title:      "My own task",
+		Type:       models.TaskTypeCasa,
+		UserID:     user.ID,
+		AssignedBy: &selfAssigned,
+	}
+	database.DB.Create(&selfTask)
+
+	delegatedTask := models.Task{
+		Title:      "Delegated task",
+		Type:       models.TaskTypeTrabalho,
+		UserID:     otherUser.ID,
+		AssignedBy: &user.ID,
+	}
+	database.DB.Create(&delegatedTask)
+
+	req, _ := http.NewRequest("GET", "/api/v1/tasks/assigned", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+	tasks := response["tasks"].([]interface{})
+	assert.Len(t, tasks, 1)
+	task := tasks[0].(map[string]interface{})
+	assert.Equal(t, "Delegated task", task["title"])
 }
 
 func TestGetTasks(t *testing.T) {

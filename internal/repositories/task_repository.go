@@ -150,8 +150,10 @@ func (r *taskRepository) FindByAssignedBy(assignedByID uint, filters *TaskFilter
 	var tasks []models.Task
 	var total int64
 
-	// Base query - tasks assigned by this user
-	query := database.DB.Model(&models.Task{}).Where("assigned_by = ?", assignedByID)
+	// Tasks delegated to others (exclude self-assigned, including legacy rows)
+	query := database.DB.Model(&models.Task{}).
+		Where("assigned_by = ?", assignedByID).
+		Where("user_id != ?", assignedByID)
 
 	// Apply filters
 	if filters != nil {
