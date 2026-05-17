@@ -15,7 +15,7 @@ type UserRepository interface {
 	FindByUsernameOrEmailValue(identifier string) (*models.User, error) // Find by username or email using a single value
 	ExistsByUsernameOrEmail(username, email string) (bool, error)
 	FindAll() ([]models.User, error) // Find all users
-	FindAllPaginated(page, limit int) ([]models.User, int64, error) // Find all users with pagination
+	FindAllPaginated(page, limit int) ([]models.UserPublic, int64, error) // Find all users with pagination (public fields only)
 }
 
 type userRepository struct{}
@@ -87,25 +87,22 @@ func (r *userRepository) FindAll() ([]models.User, error) {
 	return users, nil
 }
 
-func (r *userRepository) FindAllPaginated(page, limit int) ([]models.User, int64, error) {
-	var users []models.User
+func (r *userRepository) FindAllPaginated(page, limit int) ([]models.UserPublic, int64, error) {
+	var users []models.UserPublic
 	var total int64
 
-	// Count total users
 	if err := database.DB.Model(&models.User{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Calculate offset
 	offset := (page - 1) * limit
 
-	// Fetch paginated users
-	if err := database.DB.
-		Select("id", "username", "email", "created_at", "updated_at").
+	if err := database.DB.Model(&models.User{}).
+		Select("id", "username", "created_at", "updated_at").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
-		Find(&users).Error; err != nil {
+		Scan(&users).Error; err != nil {
 		return nil, 0, err
 	}
 

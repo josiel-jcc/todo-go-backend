@@ -8,6 +8,7 @@ import (
 	"todo-go-backend/internal/models"
 	"todo-go-backend/internal/notifications"
 	"todo-go-backend/internal/repositories"
+	"todo-go-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,15 +16,25 @@ import (
 // UserHandler manages user handlers
 type UserHandler struct {
 	notificationService *notifications.NotificationService
-	userRepo           repositories.UserRepository
+	userRepo            repositories.UserRepository
+	userService         services.UserService
 }
 
 // NewUserHandler creates a new instance of UserHandler
-func NewUserHandler(notificationService *notifications.NotificationService, userRepo repositories.UserRepository) *UserHandler {
+func NewUserHandler(
+	notificationService *notifications.NotificationService,
+	userRepo repositories.UserRepository,
+	userService services.UserService,
+) *UserHandler {
 	return &UserHandler{
 		notificationService: notificationService,
-		userRepo:           userRepo,
+		userRepo:            userRepo,
+		userService:         userService,
 	}
+}
+
+type DeleteAccountRequest struct {
+	Password string `json:"password" binding:"required"`
 }
 
 // UpdateTelegramChatIDRequest represents a request to update Telegram chat ID
@@ -245,7 +256,7 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 
 // PaginatedUsersResponse represents a paginated response for users
 type PaginatedUsersResponse struct {
-	Users      []models.User `json:"users"`
+	Users      []models.UserPublic `json:"users"`
 	Total      int64         `json:"total"`
 	Page       int           `json:"page"`
 	Limit      int           `json:"limit"`
@@ -308,4 +319,35 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// DeleteCurrentUser deletes the authenticated user's account and all associated data.
+func (h *UserHandler) DeleteCurrentUser(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var req DeleteAccountRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleValidationError(c, err)
+		return
+	}
+
+	if err := h.userService.DeleteAccount(userID, req.Password); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	handleSuccess(c, http.StatusOK, "Account deleted successfully", nil)
+}
+
+// ExportCurrentUser exports all personal data for the authenticated user.
+func (h *UserHandler) ExportCurrentUser(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	data, err := h.userService.ExportAccount(userID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, data)
 }

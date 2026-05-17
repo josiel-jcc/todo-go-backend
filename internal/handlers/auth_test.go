@@ -34,8 +34,15 @@ func TestRegister(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 		var response map[string]interface{}
 		json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NotNil(t, response["token"])
 		assert.Equal(t, "User created successfully", response["message"])
+		cookies := w.Result().Cookies()
+		var hasAuthCookie bool
+		for _, cookie := range cookies {
+			if cookie.Name == "auth_token" && cookie.HttpOnly {
+				hasAuthCookie = true
+			}
+		}
+		assert.True(t, hasAuthCookie)
 	})
 
 	t.Run("Duplicate username", func(t *testing.T) {
@@ -52,7 +59,7 @@ func TestRegister(t *testing.T) {
 
 		router.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusConflict, w.Code)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("Invalid email", func(t *testing.T) {
@@ -100,9 +107,14 @@ func TestLogin(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
-		var response map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NotNil(t, response["token"])
+		cookies := w.Result().Cookies()
+		var hasAuthCookie bool
+		for _, cookie := range cookies {
+			if cookie.Name == "auth_token" {
+				hasAuthCookie = true
+			}
+		}
+		assert.True(t, hasAuthCookie)
 	})
 
 	t.Run("Invalid credentials", func(t *testing.T) {

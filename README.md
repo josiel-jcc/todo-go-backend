@@ -2,6 +2,19 @@
 
 API RESTful para gerenciamento de tarefas desenvolvida em Go, com autenticação JWT e sistema de atribuição de tarefas entre usuários.
 
+## Conformidade (LGPD e segurança)
+
+Documentação em [`docs/compliance/`](docs/compliance/):
+
+- [Política de Privacidade](docs/compliance/PRIVACY.md)
+- [Termos de Uso](docs/compliance/TERMS.md)
+- [Postura de Segurança](docs/compliance/SECURITY.md)
+- [ROPA](docs/compliance/LGPD-ROPA.md)
+- [Retenção de dados](docs/compliance/DATA-RETENTION.md)
+- [Resposta a incidentes](docs/compliance/INCIDENT-RESPONSE.md)
+
+**Produção:** defina `APP_ENV=production`, `JWT_SECRET` (≥ 32 caracteres) e `CORS_ALLOWED_ORIGINS` (sem `*`). Veja `env.example` e [SECURITY.md](docs/compliance/SECURITY.md).
+
 ## Funcionalidades
 
 - ✅ Autenticação JWT (registro e login)

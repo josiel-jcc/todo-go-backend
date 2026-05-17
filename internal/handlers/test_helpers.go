@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"todo-go-backend/internal/config"
 	"todo-go-backend/internal/database"
 	"todo-go-backend/internal/middleware"
 	"todo-go-backend/internal/models"
@@ -80,7 +81,7 @@ func setupTestDB() *gorm.DB {
 		}
 	}
 
-	err = db.AutoMigrate(&models.User{}, &models.Task{}, &models.Tag{}, &models.Comment{}, &models.Notification{})
+	err = db.AutoMigrate(&models.User{}, &models.Task{}, &models.Tag{}, &models.Comment{}, &models.Notification{}, &models.TokenDenylist{})
 	if err != nil {
 		panic("Failed to migrate test database: " + err.Error())
 	}
@@ -127,7 +128,8 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo)
 
 	// Initialize handlers
-	authHandler := NewAuthHandler(authService)
+	cfg := &config.Config{AppEnv: "development", JWTSecret: jwtSecret}
+	authHandler := NewAuthHandler(authService, cfg)
 	taskHandler := NewTaskHandler(taskService)
 
 	// Public routes

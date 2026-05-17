@@ -24,7 +24,7 @@ func createTestUser(t *testing.T) (models.User, string) {
 	}
 	database.DB.Create(&user)
 
-	token, _ := utils.GenerateToken(user.ID, user.Username, "test-secret")
+	token, _, _ := utils.GenerateToken(user.ID, user.Username, "test-secret")
 	return user, token
 }
 

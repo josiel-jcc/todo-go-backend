@@ -3,6 +3,8 @@ package middleware
 import (
 	"net/http"
 	"strings"
+	"time"
+	"todo-go-backend/internal/auth"
 	"todo-go-backend/internal/database"
 	"todo-go-backend/internal/models"
 
@@ -10,34 +12,22 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	jwt.RegisteredClaims
-}
+const authCookieName = "auth_token"
 
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+		tokenString := extractToken(c)
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization required"})
 			c.Abort()
 			return
 		}
 
-		// Extract token from "Bearer <token>"
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
-
-		// Parse and validate token
-		claims := &Claims{}
+		claims := &auth.Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, jwt.ErrTokenSignatureInvalid
+			}
 			return []byte(jwtSecret), nil
 		})
 
@@ -47,7 +37,17 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Verify user still exists
+		if claims.JTI != "" {
+			var count int64
+			if err := database.DB.Model(&models.TokenDenylist{}).
+				Where("jti = ? AND expires_at > ?", claims.JTI, time.Now()).
+				Count(&count).Error; err == nil && count > 0 {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Token revoked"})
+				c.Abort()
+				return
+			}
+		}
+
 		var user models.User
 		if err := database.DB.First(&user, claims.UserID).Error; err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
@@ -55,11 +55,24 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		// Set user info in context
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("token_jti", claims.JTI)
 
 		c.Next()
 	}
 }
 
+func extractToken(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			return parts[1]
+		}
+	}
+	if cookie, err := c.Cookie(authCookieName); err == nil && cookie != "" {
+		return cookie
+	}
+	return ""
+}
