@@ -120,8 +120,11 @@ func (s *taskService) Create(userID uint, req *CreateTaskRequest) (*models.Task,
 		tags = foundTags
 	}
 
-	// Create task (when creating for another user, AssignedBy = creator so they can see it)
-	assignedBy := &userID
+	// AssignedBy is set only when delegating to another user (nil for self-created tasks)
+	var assignedBy *uint
+	if req.UserID != nil && *req.UserID != userID {
+		assignedBy = &userID
+	}
 	task := &models.Task{
 		Title:       req.Title,
 		Description: req.Description,

@@ -142,6 +142,7 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	protected.Use(middleware.AuthMiddleware(jwtSecret))
 	{
 		protected.GET("/tasks", taskHandler.GetTasks)
+		protected.GET("/tasks/assigned", taskHandler.GetAssignedTasks)
 		protected.GET("/tasks/:id", taskHandler.GetTask)
 		protected.POST("/tasks", taskHandler.CreateTask)
 		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
