@@ -49,6 +49,7 @@ func Connect(cfg *config.Config) error {
 		&models.Tag{},
 		&models.Comment{},
 		&models.Notification{},
+		&models.TokenDenylist{},
 	)
 
 	return err

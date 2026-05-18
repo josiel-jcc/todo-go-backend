@@ -1,16 +1,24 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
+const defaultJWTSecret = "your-secret-key-change-in-production"
+
 type Config struct {
+	AppEnv       string // development | production
 	Port         string
 	JWTSecret    string
+	CookieDomain string
+	CookieSecure bool
 	DatabasePath string
 	// MySQL configuration
 	DatabaseHost     string
@@ -19,15 +27,15 @@ type Config struct {
 	DatabasePassword string
 	DatabaseName     string
 	// CORS configuration
-	CORSAllowedOrigins   string // Comma-separated list of allowed origins (e.g., "http://localhost:3000,https://example.com")
-	CORSAllowedMethods   string // Comma-separated list of allowed methods (default: "GET,POST,PUT,DELETE,OPTIONS")
-	CORSAllowedHeaders   string // Comma-separated list of allowed headers (default: "Content-Type,Authorization")
-	CORSExposedHeaders   string // Comma-separated list of exposed headers
-	CORSAllowCredentials bool   // Whether to allow credentials (default: true)
-	CORSMaxAge           int    // Max age for preflight requests in seconds (default: 3600)
+	CORSAllowedOrigins   string
+	CORSAllowedMethods   string
+	CORSAllowedHeaders   string
+	CORSExposedHeaders   string
+	CORSAllowCredentials bool
+	CORSMaxAge           int
 	// Notifications configuration
-	NotificationsEnabled      bool   // Enable/disable notifications (default: true)
-	NotificationCheckInterval string // Cron expression for notification check (default: "0 * * * *" - every hour)
+	NotificationsEnabled      bool
+	NotificationCheckInterval string
 	// Email SMTP configuration
 	SMTPHost     string
 	SMTPPort     string
@@ -35,53 +43,55 @@ type Config struct {
 	SMTPPassword string
 	SMTPFrom     string
 	// Telegram Bot configuration
-	TelegramBotToken string // Telegram bot token
+	TelegramBotToken string
 }
 
 func Load() (*Config, error) {
-	// Try to load .env file, but don't fail if it doesn't exist
-	if err := godotenv.Load(); err != nil {
-		// Log warning but continue (env vars might be set via Docker/OS)
-		// This is expected in Docker environments
-	}
+	_ = godotenv.Load()
 
-	// Parse CORS max age
-	corsMaxAge := 3600 // Default: 1 hour
+	corsMaxAge := 3600
 	if maxAgeStr := getEnv("CORS_MAX_AGE", ""); maxAgeStr != "" {
 		if parsed, err := parseInt(maxAgeStr); err == nil {
 			corsMaxAge = parsed
 		}
 	}
 
-	// Parse CORS allow credentials
-	corsAllowCredentials := true // Default: true
+	corsAllowCredentials := true
 	if allowCredsStr := getEnv("CORS_ALLOW_CREDENTIALS", ""); allowCredsStr != "" {
 		corsAllowCredentials = allowCredsStr == "true" || allowCredsStr == "1"
 	}
 
-	// Parse notifications enabled
-	notificationsEnabled := true // Default: enabled
+	notificationsEnabled := true
 	if enabledStr := getEnv("NOTIFICATIONS_ENABLED", ""); enabledStr != "" {
 		notificationsEnabled = enabledStr == "true" || enabledStr == "1"
 	}
 
-	config := &Config{
+	appEnv := getEnv("APP_ENV", "development")
+	cookieSecure := appEnv == "production"
+	if secureStr := getEnv("COOKIE_SECURE", ""); secureStr != "" {
+		cookieSecure = secureStr == "true" || secureStr == "1"
+	}
+
+	cfg := &Config{
+		AppEnv:                    appEnv,
 		Port:                      getEnv("PORT", "8080"),
-		JWTSecret:                 getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		JWTSecret:                 getEnv("JWT_SECRET", defaultJWTSecret),
+		CookieDomain:              getEnv("COOKIE_DOMAIN", ""),
+		CookieSecure:              cookieSecure,
 		DatabasePath:              getEnv("DATABASE_PATH", "todo.db"),
 		DatabaseHost:              getEnv("DATABASE_HOST", ""),
 		DatabasePort:              getEnv("DATABASE_PORT", "3306"),
 		DatabaseUser:              getEnv("DATABASE_USER", ""),
 		DatabasePassword:          getEnv("DATABASE_PASSWORD", ""),
 		DatabaseName:              getEnv("DATABASE_NAME", ""),
-		CORSAllowedOrigins:        getEnv("CORS_ALLOWED_ORIGINS", "*"), // Default: allow all origins (including same-origin)
+		CORSAllowedOrigins:        getEnv("CORS_ALLOWED_ORIGINS", "*"),
 		CORSAllowedMethods:        getEnv("CORS_ALLOWED_METHODS", "GET,POST,PUT,DELETE,OPTIONS,PATCH"),
 		CORSAllowedHeaders:        getEnv("CORS_ALLOWED_HEADERS", "Content-Type,Authorization,Accept,Origin"),
 		CORSExposedHeaders:        getEnv("CORS_EXPOSED_HEADERS", ""),
 		CORSAllowCredentials:      corsAllowCredentials,
 		CORSMaxAge:                corsMaxAge,
 		NotificationsEnabled:      notificationsEnabled,
-		NotificationCheckInterval: getEnv("NOTIFICATION_CHECK_INTERVAL", "0 * * * *"), // Default: every hour
+		NotificationCheckInterval: getEnv("NOTIFICATION_CHECK_INTERVAL", "0 * * * *"),
 		SMTPHost:                  getEnv("SMTP_HOST", ""),
 		SMTPPort:                  getEnv("SMTP_PORT", "587"),
 		SMTPUser:                  getEnv("SMTP_USER", ""),
@@ -90,13 +100,35 @@ func Load() (*Config, error) {
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
 	}
 
-	// Log configuration status (without sensitive data)
-	logConfigStatus(config)
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
 
-	return config, nil
+	logConfigStatus(cfg)
+	return cfg, nil
 }
 
-// UseMySQL returns true if MySQL configuration is provided
+func (c *Config) IsProduction() bool {
+	return c.AppEnv == "production"
+}
+
+func (c *Config) Validate() error {
+	if !c.IsProduction() {
+		return nil
+	}
+	if c.JWTSecret == "" || c.JWTSecret == defaultJWTSecret {
+		return errors.New("JWT_SECRET must be set to a strong unique value in production")
+	}
+	if len(c.JWTSecret) < 32 {
+		return fmt.Errorf("JWT_SECRET must be at least 32 characters in production (got %d)", len(c.JWTSecret))
+	}
+	origins := strings.TrimSpace(c.CORSAllowedOrigins)
+	if origins == "" || origins == "*" {
+		return errors.New("CORS_ALLOWED_ORIGINS must list explicit origins in production (wildcard not allowed)")
+	}
+	return nil
+}
+
 func (c *Config) UseMySQL() bool {
 	return c.DatabaseHost != "" && c.DatabaseUser != "" && c.DatabaseName != ""
 }
@@ -112,21 +144,15 @@ func parseInt(s string) (int, error) {
 	return strconv.Atoi(s)
 }
 
-// logConfigStatus logs configuration status without sensitive data
 func logConfigStatus(cfg *Config) {
 	log.Println("=== Configuration Status ===")
+	log.Printf("APP_ENV: %s", cfg.AppEnv)
 	log.Printf("Port: %s", cfg.Port)
 	log.Printf("CORS Allowed Origins: %s", cfg.CORSAllowedOrigins)
 	log.Printf("CORS Allow Credentials: %v", cfg.CORSAllowCredentials)
-	log.Printf("CORS Allowed Methods: %s", cfg.CORSAllowedMethods)
-	log.Printf("CORS Allowed Headers: %s", cfg.CORSAllowedHeaders)
+	log.Printf("Cookie Secure: %v", cfg.CookieSecure)
 	log.Printf("Notifications Enabled: %v", cfg.NotificationsEnabled)
-	log.Printf("Notification Interval: %s", cfg.NotificationCheckInterval)
 	log.Printf("SMTP Host: %s", maskIfEmpty(cfg.SMTPHost))
-	log.Printf("SMTP Port: %s", cfg.SMTPPort)
-	log.Printf("SMTP User: %s", maskIfEmpty(cfg.SMTPUser))
-	log.Printf("SMTP Password: %s", maskIfEmpty(cfg.SMTPPassword))
-	log.Printf("SMTP From: %s", maskIfEmpty(cfg.SMTPFrom))
 	log.Printf("Telegram Bot Token: %s", maskIfEmpty(cfg.TelegramBotToken))
 	log.Println("===========================")
 }

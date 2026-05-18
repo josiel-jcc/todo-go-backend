@@ -75,9 +75,8 @@ func (s *NotificationService) CheckAndSendNotifications() error {
 			continue
 		}
 
-		log.Printf("Task %d: due_date=%s, user_id=%d, notifications_enabled=%v, email=%s, telegram_chat_id=%v",
-			task.ID, dueDate.Format("2006-01-02"), task.UserID, task.User.NotificationsEnabled,
-			task.User.Email, task.User.TelegramChatID)
+		log.Printf("Task %d: due_date=%s, user_id=%d, notifications_enabled=%v",
+			task.ID, dueDate.Format("2006-01-02"), task.UserID, task.User.NotificationsEnabled)
 
 		// Check for overdue tasks
 		if dueDate.Before(today) {
@@ -121,7 +120,7 @@ func (s *NotificationService) sendNotification(task *models.Task, notificationTy
 		} else if exists {
 			log.Printf("Email notification already sent today for task %d, skipping", task.ID)
 		} else {
-			log.Printf("Sending email notification for task %d to %s", task.ID, user.Email)
+			log.Printf("Sending email notification for task %d to user_id=%d", task.ID, user.ID)
 			if err := s.emailService.SendNotification(&user, task, notificationType); err != nil {
 				log.Printf("Failed to send email notification: %v", err)
 			} else {
@@ -158,7 +157,7 @@ func (s *NotificationService) sendNotification(task *models.Task, notificationTy
 		} else if exists {
 			log.Printf("Telegram notification already sent today for task %d, skipping", task.ID)
 		} else {
-			log.Printf("Sending telegram notification for task %d to chat %s", task.ID, *user.TelegramChatID)
+			log.Printf("Sending telegram notification for task %d to user_id=%d", task.ID, user.ID)
 			if err := s.telegramService.SendNotification(*user.TelegramChatID, task, notificationType); err != nil {
 				log.Printf("Failed to send telegram notification: %v", err)
 			} else {

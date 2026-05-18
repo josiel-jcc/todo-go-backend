@@ -93,16 +93,19 @@ func (m *MockUserRepository) FindAll() ([]models.User, error) {
 	return users, nil
 }
 
-func (m *MockUserRepository) FindAllPaginated(page, limit int) ([]models.User, int64, error) {
-	allUsers := make([]models.User, 0, len(m.users))
+func (m *MockUserRepository) FindAllPaginated(page, limit int) ([]models.UserPublic, int64, error) {
+	allUsers := make([]models.UserPublic, 0, len(m.users))
 	for _, user := range m.users {
-		allUsers = append(allUsers, *user)
+		allUsers = append(allUsers, models.UserPublic{
+			ID:        user.ID,
+			Username:  user.Username,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
 	}
 
 	total := int64(len(allUsers))
 	offset := (page - 1) * limit
-
-	// Simple pagination logic
 	start := offset
 	end := offset + limit
 	if start > int(total) {
@@ -111,12 +114,11 @@ func (m *MockUserRepository) FindAllPaginated(page, limit int) ([]models.User, i
 	if end > int(total) {
 		end = int(total)
 	}
-
 	if start < 0 {
 		start = 0
 	}
 
-	var paginatedUsers []models.User
+	var paginatedUsers []models.UserPublic
 	if start < int(total) {
 		paginatedUsers = allUsers[start:end]
 	}

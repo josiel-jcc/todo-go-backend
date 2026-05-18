@@ -45,7 +45,7 @@ func NewUserNotFoundError() *AppError {
 }
 
 func NewUserAlreadyExistsError() *AppError {
-	return NewAppError(ErrUserAlreadyExists, "Username or email already exists", http.StatusConflict)
+	return NewAppError(ErrUserAlreadyExists, "Não foi possível criar a conta. Verifique os dados informados.", http.StatusBadRequest)
 }
 
 func NewInvalidCredentialsError() *AppError {

@@ -45,14 +45,11 @@ func (s *commentService) Create(userID uint, req *CreateCommentRequest) (*models
 		return nil, errors.NewInvalidInputError("Comment content must be between 1 and 5000 characters")
 	}
 
-	// Check if task exists and user has access
-	task, err := s.taskRepo.FindByID(req.TaskID)
-	if err != nil {
+	if _, err := s.taskRepo.FindByID(req.TaskID); err != nil {
 		return nil, errors.NewTaskNotFoundError()
 	}
-
-	// User can comment if they own the task or assigned it
-	if task.UserID != userID && (task.AssignedBy == nil || *task.AssignedBy != userID) {
+	canAccess, err := s.taskRepo.UserCanAccessTask(req.TaskID, userID)
+	if err != nil || !canAccess {
 		return nil, errors.NewForbiddenError()
 	}
 
@@ -81,13 +78,8 @@ func (s *commentService) GetByID(userID, commentID uint) (*models.Comment, error
 		return nil, errors.NewTaskNotFoundError() // Reuse error type
 	}
 
-	// Check if user has access to the task
-	task, err := s.taskRepo.FindByID(comment.TaskID)
-	if err != nil {
-		return nil, errors.NewTaskNotFoundError()
-	}
-
-	if task.UserID != userID && (task.AssignedBy == nil || *task.AssignedBy != userID) {
+	canAccess, err := s.taskRepo.UserCanAccessTask(comment.TaskID, userID)
+	if err != nil || !canAccess {
 		return nil, errors.NewForbiddenError()
 	}
 
@@ -95,14 +87,11 @@ func (s *commentService) GetByID(userID, commentID uint) (*models.Comment, error
 }
 
 func (s *commentService) GetByTaskID(userID, taskID uint) ([]models.Comment, error) {
-	// Check if task exists and user has access
-	task, err := s.taskRepo.FindByID(taskID)
-	if err != nil {
+	if _, err := s.taskRepo.FindByID(taskID); err != nil {
 		return nil, errors.NewTaskNotFoundError()
 	}
-
-	// User can view comments if they own the task or assigned it
-	if task.UserID != userID && (task.AssignedBy == nil || *task.AssignedBy != userID) {
+	canAccess, err := s.taskRepo.UserCanAccessTask(taskID, userID)
+	if err != nil || !canAccess {
 		return nil, errors.NewForbiddenError()
 	}
 
