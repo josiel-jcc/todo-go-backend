@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 	"time"
 	"todo-go-backend/internal/config"
 	"todo-go-backend/internal/database"
@@ -14,14 +15,29 @@ import (
 // SetAuthCookie sets the HttpOnly session cookie.
 func SetAuthCookie(c *gin.Context, cfg *config.Config, token string) {
 	maxAge := int(utils.TokenMaxAge.Seconds())
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(authCookieName, token, maxAge, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+	sameSite := parseSameSite(cfg.CookieSameSite)
+	secure := cfg.CookieSecure || sameSite == http.SameSiteNoneMode
+	c.SetSameSite(sameSite)
+	c.SetCookie(authCookieName, token, maxAge, "/", cfg.CookieDomain, secure, true)
 }
 
 // ClearAuthCookie removes the session cookie.
 func ClearAuthCookie(c *gin.Context, cfg *config.Config) {
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(authCookieName, "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+	sameSite := parseSameSite(cfg.CookieSameSite)
+	secure := cfg.CookieSecure || sameSite == http.SameSiteNoneMode
+	c.SetSameSite(sameSite)
+	c.SetCookie(authCookieName, "", -1, "/", cfg.CookieDomain, secure, true)
+}
+
+func parseSameSite(value string) http.SameSite {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "none":
+		return http.SameSiteNoneMode
+	case "strict":
+		return http.SameSiteStrictMode
+	default:
+		return http.SameSiteLaxMode
+	}
 }
 
 // RevokeTokenJTI adds a JWT ID to the denylist until its expiration.
