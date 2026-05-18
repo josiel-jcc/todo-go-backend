@@ -57,6 +57,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, AuthResponse{
 		Message: "User created successfully",
+		Token:   token,
 		User:    userProfileResponse(*user),
 	})
 }
@@ -78,6 +79,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, AuthResponse{
 		Message: "Login successful",
+		Token:   token,
 		User:    userProfileResponse(*user),
 	})
 }

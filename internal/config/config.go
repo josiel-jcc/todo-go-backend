@@ -17,8 +17,9 @@ type Config struct {
 	AppEnv       string // development | production
 	Port         string
 	JWTSecret    string
-	CookieDomain string
-	CookieSecure bool
+	CookieDomain   string
+	CookieSecure   bool
+	CookieSameSite string // lax | none | strict
 	DatabasePath string
 	// MySQL configuration
 	DatabaseHost     string
@@ -72,12 +73,22 @@ func Load() (*Config, error) {
 		cookieSecure = secureStr == "true" || secureStr == "1"
 	}
 
+	cookieSameSite := getEnv("COOKIE_SAMESITE", "")
+	if cookieSameSite == "" {
+		if appEnv == "production" {
+			cookieSameSite = "none" // cross-origin SPA (frontend and API on different hosts)
+		} else {
+			cookieSameSite = "lax"
+		}
+	}
+
 	cfg := &Config{
 		AppEnv:                    appEnv,
 		Port:                      getEnv("PORT", "8080"),
 		JWTSecret:                 getEnv("JWT_SECRET", defaultJWTSecret),
 		CookieDomain:              getEnv("COOKIE_DOMAIN", ""),
 		CookieSecure:              cookieSecure,
+		CookieSameSite:            cookieSameSite,
 		DatabasePath:              getEnv("DATABASE_PATH", "todo.db"),
 		DatabaseHost:              getEnv("DATABASE_HOST", ""),
 		DatabasePort:              getEnv("DATABASE_PORT", "3306"),
