@@ -16,6 +16,8 @@ type UserRepository interface {
 	ExistsByUsernameOrEmail(username, email string) (bool, error)
 	FindAll() ([]models.User, error) // Find all users
 	FindAllPaginated(page, limit int) ([]models.UserPublic, int64, error) // Find all users with pagination (public fields only)
+	FindCoGroupUsersPaginated(currentUserID uint, page, limit int) ([]models.UserPublic, int64, error)
+	FindAllPaginatedExcluding(currentUserID uint, excludeIDs []uint, page, limit int) ([]models.UserPublic, int64, error)
 }
 
 type userRepository struct{}
@@ -107,5 +109,51 @@ func (r *userRepository) FindAllPaginated(page, limit int) ([]models.UserPublic,
 	}
 
 	return users, total, nil
+}
+
+func (r *userRepository) FindCoGroupUsersPaginated(currentUserID uint, page, limit int) ([]models.UserPublic, int64, error) {
+	subQuery := database.DB.Table("group_members AS a").
+		Select("b.user_id").
+		Joins("JOIN group_members AS b ON a.group_id = b.group_id").
+		Where("a.user_id = ? AND b.user_id != ?", currentUserID, currentUserID)
+
+	var total int64
+	countQuery := database.DB.Model(&models.User{}).Where("id IN (?)", subQuery)
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	var users []models.UserPublic
+	err := database.DB.Model(&models.User{}).
+		Select("id", "username", "created_at", "updated_at").
+		Where("id IN (?)", subQuery).
+		Order("username ASC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&users).Error
+	return users, total, err
+}
+
+func (r *userRepository) FindAllPaginatedExcluding(currentUserID uint, excludeIDs []uint, page, limit int) ([]models.UserPublic, int64, error) {
+	query := database.DB.Model(&models.User{}).Where("id != ?", currentUserID)
+	if len(excludeIDs) > 0 {
+		query = query.Where("id NOT IN ?", excludeIDs)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	var users []models.UserPublic
+	err := query.
+		Select("id", "username", "created_at", "updated_at").
+		Order("username ASC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&users).Error
+	return users, total, err
 }
 

@@ -97,6 +97,16 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 - **Implementação**:
   - ✅ Modelo `Comment` relacionado a `Task`
   - ✅ CRUD de comentários
+
+#### 9. Grupos com convites e colaboração restrita ✅
+- **Descrição**: Grupos de usuários; compartilhar/atribuir tarefas apenas entre membros do mesmo grupo; convites com aceite e notificações in-app
+- **Benefícios**: Controle de quem colabora; migração segura com grupo padrão "Os de casa"
+- **Status**: ✅ **Implementado**
+- **Implementação**:
+  - ✅ Modelos `Group`, `GroupMember`, `GroupInvitation`, `UserNotification`
+  - ✅ APIs `/groups`, `/group-invitations`, `/notifications/in-app`
+  - ✅ Migração idempotente no startup; novos usuários no grupo padrão
+  - ✅ `GET /users` filtrado; `?scope=invite` para convites
   - ⏳ Notificações quando alguém comenta (deixado para implementação futura)
 
 #### 9. Anexos/Arquivos

@@ -58,17 +58,18 @@ func TestCreateTask(t *testing.T) {
 		assert.Nil(t, task.AssignedBy)
 	})
 
-	t.Run("Create task for another user", func(t *testing.T) {
+	t.Run("Create task for another user in same group", func(t *testing.T) {
 		otherUser := models.User{
 			Username: "otheruser",
 			Email:    "other@example.com",
 			Password: "hashed",
 		}
 		database.DB.Create(&otherUser)
+		createGroupWithMembers(t, user, otherUser.ID)
 
 		reqBody := CreateTaskRequest{
-			Title: "Task for other user",
-			Type:  models.TaskTypeTrabalho,
+			Title:  "Task for other user",
+			Type:   models.TaskTypeTrabalho,
 			UserID: &otherUser.ID,
 		}
 		jsonValue, _ := json.Marshal(reqBody)
@@ -85,6 +86,88 @@ func TestCreateTask(t *testing.T) {
 		json.Unmarshal(w.Body.Bytes(), &task)
 		assert.Equal(t, otherUser.ID, task.UserID)
 		assert.Equal(t, user.ID, *task.AssignedBy)
+	})
+
+	t.Run("Create task for user not in shared group", func(t *testing.T) {
+		stranger := models.User{
+			Username: "stranger",
+			Email:    "stranger@example.com",
+			Password: "hashed",
+		}
+		database.DB.Create(&stranger)
+
+		reqBody := CreateTaskRequest{
+			Title:  "Task for stranger",
+			Type:   models.TaskTypeCasa,
+			UserID: &stranger.ID,
+		}
+		jsonValue, _ := json.Marshal(reqBody)
+
+		req, _ := http.NewRequest("POST", "/api/v1/tasks", bytes.NewBuffer(jsonValue))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
+
+func TestShareTask(t *testing.T) {
+	setupTestDB()
+	router := setupTestRouter("test-secret")
+	owner, token := createTestUser(t)
+
+	t.Run("Share with user in same group", func(t *testing.T) {
+		colleague := models.User{
+			Username: "colleague",
+			Email:    "colleague@example.com",
+			Password: "hashed",
+		}
+		database.DB.Create(&colleague)
+		createGroupWithMembers(t, owner, colleague.ID)
+
+		task := models.Task{
+			Title:  "Shareable",
+			Type:   models.TaskTypeCasa,
+			UserID: owner.ID,
+		}
+		database.DB.Create(&task)
+
+		body, _ := json.Marshal(ShareTaskRequest{UserIDs: []uint{colleague.ID}})
+		req, _ := http.NewRequest("POST", fmt.Sprintf("/api/v1/tasks/%d/share", task.ID), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("Share rejected without shared group", func(t *testing.T) {
+		stranger := models.User{
+			Username: "stranger2",
+			Email:    "stranger2@example.com",
+			Password: "hashed",
+		}
+		database.DB.Create(&stranger)
+
+		task := models.Task{
+			Title:  "Private",
+			Type:   models.TaskTypeCasa,
+			UserID: owner.ID,
+		}
+		database.DB.Create(&task)
+
+		body, _ := json.Marshal(ShareTaskRequest{UserIDs: []uint{stranger.ID}})
+		req, _ := http.NewRequest("POST", fmt.Sprintf("/api/v1/tasks/%d/share", task.ID), bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }
 

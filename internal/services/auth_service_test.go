@@ -126,9 +126,32 @@ func (m *MockUserRepository) FindAllPaginated(page, limit int) ([]models.UserPub
 	return paginatedUsers, total, nil
 }
 
+func (m *MockUserRepository) FindCoGroupUsersPaginated(currentUserID uint, page, limit int) ([]models.UserPublic, int64, error) {
+	return m.FindAllPaginated(page, limit)
+}
+
+func (m *MockUserRepository) FindAllPaginatedExcluding(currentUserID uint, excludeIDs []uint, page, limit int) ([]models.UserPublic, int64, error) {
+	all, total, err := m.FindAllPaginated(page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	exclude := make(map[uint]bool)
+	exclude[currentUserID] = true
+	for _, id := range excludeIDs {
+		exclude[id] = true
+	}
+	filtered := make([]models.UserPublic, 0)
+	for _, u := range all {
+		if !exclude[u.ID] {
+			filtered = append(filtered, u)
+		}
+	}
+	return filtered, total, nil
+}
+
 func TestAuthService_Register(t *testing.T) {
 	mockRepo := NewMockUserRepository()
-	service := NewAuthService(mockRepo, "test-secret")
+	service := NewAuthService(mockRepo, "test-secret", nil)
 
 	t.Run("Register new user successfully", func(t *testing.T) {
 		user, token, err := service.Register("testuser", "test@example.com", "password123")
@@ -152,7 +175,7 @@ func TestAuthService_Register(t *testing.T) {
 
 func TestAuthService_Login(t *testing.T) {
 	mockRepo := NewMockUserRepository()
-	service := NewAuthService(mockRepo, "test-secret")
+	service := NewAuthService(mockRepo, "test-secret", nil)
 
 	// Create a user first
 	_, _, _ = service.Register("testuser", "test@example.com", "password123")

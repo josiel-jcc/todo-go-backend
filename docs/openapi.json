@@ -1,25 +1,6 @@
 {
 	"components": {
 		"schemas": {
-			"handlers.AuthResponse": {
-				"properties": {
-					"message": {
-						"example": "Login successful",
-						"type": "string"
-					},
-					"token": {
-						"example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-						"type": "string"
-					},
-					"user": {}
-				},
-				"required": [
-					"message",
-					"token",
-					"user"
-				],
-				"type": "object"
-			},
 			"handlers.CreateCommentRequest": {
 				"properties": {
 					"content": {
@@ -36,6 +17,20 @@
 				"required": [
 					"content",
 					"task_id"
+				],
+				"type": "object"
+			},
+			"handlers.CreateGroupRequest": {
+				"properties": {
+					"name": {
+						"example": "Equipe",
+						"maxLength": 100,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
 				],
 				"type": "object"
 			},
@@ -140,21 +135,202 @@
 				],
 				"type": "object"
 			},
-			"handlers.LoginRequest": {
+			"handlers.GroupDetailResponse": {
 				"properties": {
-					"password": {
-						"example": "password123",
+					"created_by": {
+						"type": "integer"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"is_default": {
+						"type": "boolean"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/models.UserPublic"
+						},
+						"type": "array"
+					},
+					"name": {
 						"type": "string"
 					},
-					"username": {
-						"description": "Username or email address (e.g., \"johndoe\" or \"john@example.com\")",
-						"example": "johndoe",
+					"pending_invitations": {
+						"items": {
+							"$ref": "#/components/schemas/models.GroupInvitation"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"created_by",
+					"id",
+					"is_default",
+					"members",
+					"name",
+					"pending_invitations"
+				],
+				"type": "object"
+			},
+			"handlers.GroupInvitationListItem": {
+				"properties": {
+					"created_at": {
+						"type": "string"
+					},
+					"group": {
+						"$ref": "#/components/schemas/models.Group"
+					},
+					"group_id": {
+						"type": "integer"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"invited_by_user": {
+						"$ref": "#/components/schemas/models.User"
+					},
+					"invited_by_user_id": {
+						"type": "integer"
+					},
+					"invited_user": {
+						"$ref": "#/components/schemas/models.User"
+					},
+					"invited_user_id": {
+						"type": "integer"
+					},
+					"responded_at": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/models.GroupInvitationStatus"
+					},
+					"updated_at": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"password",
-					"username"
+					"created_at",
+					"group",
+					"group_id",
+					"id",
+					"invited_by_user",
+					"invited_by_user_id",
+					"invited_user",
+					"invited_user_id",
+					"responded_at",
+					"status",
+					"updated_at"
+				],
+				"type": "object"
+			},
+			"handlers.GroupListItemResponse": {
+				"properties": {
+					"created_by": {
+						"type": "integer"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"is_default": {
+						"type": "boolean"
+					},
+					"member_count": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"created_by",
+					"id",
+					"is_default",
+					"member_count",
+					"name"
+				],
+				"type": "object"
+			},
+			"handlers.GroupResponse": {
+				"properties": {
+					"created_at": {
+						"type": "string"
+					},
+					"created_by": {
+						"type": "integer"
+					},
+					"creator": {
+						"$ref": "#/components/schemas/models.User"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"is_default": {
+						"type": "boolean"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/models.User"
+						},
+						"type": "array"
+					},
+					"name": {
+						"type": "string"
+					},
+					"updated_at": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"created_at",
+					"created_by",
+					"creator",
+					"id",
+					"is_default",
+					"members",
+					"name",
+					"updated_at"
+				],
+				"type": "object"
+			},
+			"handlers.InviteUserRequest": {
+				"properties": {
+					"user_id": {
+						"example": 2,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"user_id"
+				],
+				"type": "object"
+			},
+			"handlers.PaginatedInAppNotificationsResponse": {
+				"properties": {
+					"limit": {
+						"type": "integer"
+					},
+					"notifications": {
+						"items": {
+							"$ref": "#/components/schemas/models.UserNotification"
+						},
+						"type": "array"
+					},
+					"page": {
+						"type": "integer"
+					},
+					"total": {
+						"type": "integer"
+					},
+					"total_pages": {
+						"type": "integer"
+					}
+				},
+				"required": [
+					"limit",
+					"notifications",
+					"page",
+					"total",
+					"total_pages"
 				],
 				"type": "object"
 			},
@@ -174,7 +350,7 @@
 					},
 					"users": {
 						"items": {
-							"$ref": "#/components/schemas/models.User"
+							"$ref": "#/components/schemas/models.UserPublic"
 						},
 						"type": "array"
 					}
@@ -185,31 +361,6 @@
 					"total",
 					"total_pages",
 					"users"
-				],
-				"type": "object"
-			},
-			"handlers.RegisterRequest": {
-				"properties": {
-					"email": {
-						"example": "john@example.com",
-						"type": "string"
-					},
-					"password": {
-						"example": "password123",
-						"minLength": 6,
-						"type": "string"
-					},
-					"username": {
-						"example": "johndoe",
-						"maxLength": 50,
-						"minLength": 3,
-						"type": "string"
-					}
-				},
-				"required": [
-					"email",
-					"password",
-					"username"
 				],
 				"type": "object"
 			},
@@ -246,6 +397,17 @@
 				],
 				"type": "object"
 			},
+			"handlers.UnreadCountResponse": {
+				"properties": {
+					"count": {
+						"type": "integer"
+					}
+				},
+				"required": [
+					"count"
+				],
+				"type": "object"
+			},
 			"handlers.UpdateCommentRequest": {
 				"properties": {
 					"content": {
@@ -257,6 +419,20 @@
 				},
 				"required": [
 					"content"
+				],
+				"type": "object"
+			},
+			"handlers.UpdateGroupRequest": {
+				"properties": {
+					"name": {
+						"example": "Equipe atualizada",
+						"maxLength": 100,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
 				],
 				"type": "object"
 			},
@@ -404,6 +580,114 @@
 					"user_id"
 				],
 				"type": "object"
+			},
+			"models.Group": {
+				"properties": {
+					"created_at": {
+						"type": "string"
+					},
+					"created_by": {
+						"type": "integer"
+					},
+					"creator": {
+						"$ref": "#/components/schemas/models.User"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"is_default": {
+						"type": "boolean"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/models.User"
+						},
+						"type": "array"
+					},
+					"name": {
+						"type": "string"
+					},
+					"updated_at": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"created_at",
+					"created_by",
+					"creator",
+					"id",
+					"is_default",
+					"members",
+					"name",
+					"updated_at"
+				],
+				"type": "object"
+			},
+			"models.GroupInvitation": {
+				"properties": {
+					"created_at": {
+						"type": "string"
+					},
+					"group": {
+						"$ref": "#/components/schemas/models.Group"
+					},
+					"group_id": {
+						"type": "integer"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"invited_by_user": {
+						"$ref": "#/components/schemas/models.User"
+					},
+					"invited_by_user_id": {
+						"type": "integer"
+					},
+					"invited_user": {
+						"$ref": "#/components/schemas/models.User"
+					},
+					"invited_user_id": {
+						"type": "integer"
+					},
+					"responded_at": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/models.GroupInvitationStatus"
+					},
+					"updated_at": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"created_at",
+					"group",
+					"group_id",
+					"id",
+					"invited_by_user",
+					"invited_by_user_id",
+					"invited_user",
+					"invited_user_id",
+					"responded_at",
+					"status",
+					"updated_at"
+				],
+				"type": "object"
+			},
+			"models.GroupInvitationStatus": {
+				"enum": [
+					"pending",
+					"accepted",
+					"declined",
+					"cancelled"
+				],
+				"type": "string",
+				"x-enum-varnames": [
+					"GroupInvitationPending",
+					"GroupInvitationAccepted",
+					"GroupInvitationDeclined",
+					"GroupInvitationCancelled"
+				]
 			},
 			"models.Priority": {
 				"enum": [
@@ -582,11 +866,14 @@
 						"type": "integer"
 					},
 					"notifications_enabled": {
-						"description": "Enable/disable notifications",
+						"description": "Opt-in notifications",
 						"type": "boolean"
 					},
 					"telegram_chat_id": {
 						"description": "Telegram chat ID for notifications",
+						"type": "string"
+					},
+					"terms_accepted_at": {
 						"type": "string"
 					},
 					"updated_at": {
@@ -602,6 +889,74 @@
 					"id",
 					"notifications_enabled",
 					"telegram_chat_id",
+					"terms_accepted_at",
+					"updated_at",
+					"username"
+				],
+				"type": "object"
+			},
+			"models.UserNotification": {
+				"properties": {
+					"created_at": {
+						"type": "string"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"payload": {
+						"type": "string"
+					},
+					"read": {
+						"type": "boolean"
+					},
+					"type": {
+						"$ref": "#/components/schemas/models.UserNotificationType"
+					},
+					"updated_at": {
+						"type": "string"
+					},
+					"user_id": {
+						"type": "integer"
+					}
+				},
+				"required": [
+					"created_at",
+					"id",
+					"payload",
+					"read",
+					"type",
+					"updated_at",
+					"user_id"
+				],
+				"type": "object"
+			},
+			"models.UserNotificationType": {
+				"enum": [
+					"group_invite"
+				],
+				"type": "string",
+				"x-enum-varnames": [
+					"UserNotificationTypeGroupInvite"
+				]
+			},
+			"models.UserPublic": {
+				"properties": {
+					"created_at": {
+						"type": "string"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"updated_at": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"created_at",
+					"id",
 					"updated_at",
 					"username"
 				],
@@ -663,132 +1018,6 @@
 	},
 	"openapi": "3.0.3",
 	"paths": {
-		"/auth/login": {
-			"post": {
-				"description": "Authenticates a user by username or email and returns a JWT token. The username field accepts either username or email address.",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/handlers.LoginRequest"
-							}
-						}
-					},
-					"description": "User login credentials. The 'username' field accepts either username (e.g., 'johndoe') or email address (e.g., 'john@example.com').",
-					"required": true,
-					"x-originalParamName": "request"
-				},
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.AuthResponse"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"401": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.ErrorResponse"
-								}
-							}
-						},
-						"description": "Unauthorized"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "Login user",
-				"tags": [
-					"auth"
-				]
-			}
-		},
-		"/auth/register": {
-			"post": {
-				"description": "Creates a new user account and returns a JWT token",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/handlers.RegisterRequest"
-							}
-						}
-					},
-					"description": "User registration data",
-					"required": true,
-					"x-originalParamName": "request"
-				},
-				"responses": {
-					"201": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.AuthResponse"
-								}
-							}
-						},
-						"description": "Created"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"409": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.ErrorResponse"
-								}
-							}
-						},
-						"description": "Conflict"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/handlers.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "Register a new user",
-				"tags": [
-					"auth"
-				]
-			}
-		},
 		"/comments": {
 			"post": {
 				"description": "Creates a new comment on a task. User must own the task or have assigned it.",
@@ -1136,6 +1365,797 @@
 				]
 			}
 		},
+		"/group-invitations": {
+			"get": {
+				"description": "Returns pending group invitations where the authenticated user is the invitee.",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/handlers.GroupInvitationListItem"
+									},
+									"type": "array"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "List received invitations",
+				"tags": [
+					"group-invitations"
+				]
+			}
+		},
+		"/group-invitations/{id}/accept": {
+			"post": {
+				"parameters": [
+					{
+						"description": "Invitation ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Accept group invitation",
+				"tags": [
+					"group-invitations"
+				]
+			}
+		},
+		"/group-invitations/{id}/decline": {
+			"post": {
+				"parameters": [
+					{
+						"description": "Invitation ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Decline group invitation",
+				"tags": [
+					"group-invitations"
+				]
+			}
+		},
+		"/groups": {
+			"get": {
+				"description": "Returns all groups where the authenticated user is a member.",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/handlers.GroupListItemResponse"
+									},
+									"type": "array"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "List my groups",
+				"tags": [
+					"groups"
+				]
+			},
+			"post": {
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/handlers.CreateGroupRequest"
+							}
+						}
+					},
+					"description": "Group name",
+					"required": true,
+					"x-originalParamName": "request"
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.GroupResponse"
+								}
+							}
+						},
+						"description": "Created"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Create a group",
+				"tags": [
+					"groups"
+				]
+			}
+		},
+		"/groups/{id}": {
+			"delete": {
+				"parameters": [
+					{
+						"description": "Group ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Delete a group",
+				"tags": [
+					"groups"
+				]
+			},
+			"get": {
+				"parameters": [
+					{
+						"description": "Group ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.GroupDetailResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Get group details",
+				"tags": [
+					"groups"
+				]
+			},
+			"put": {
+				"parameters": [
+					{
+						"description": "Group ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/handlers.UpdateGroupRequest"
+							}
+						}
+					},
+					"description": "New name",
+					"required": true,
+					"x-originalParamName": "request"
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.GroupResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Update group name",
+				"tags": [
+					"groups"
+				]
+			}
+		},
+		"/groups/{id}/invitations": {
+			"post": {
+				"description": "Creates a pending invitation; the user must accept to join. Cannot invite existing members.",
+				"parameters": [
+					{
+						"description": "Group ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/handlers.InviteUserRequest"
+							}
+						}
+					},
+					"description": "User to invite",
+					"required": true,
+					"x-originalParamName": "request"
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.GroupInvitationListItem"
+								}
+							}
+						},
+						"description": "Created"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Invite user to group",
+				"tags": [
+					"groups"
+				]
+			}
+		},
+		"/groups/{id}/invitations/{invitation_id}": {
+			"delete": {
+				"parameters": [
+					{
+						"description": "Group ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					},
+					{
+						"description": "Invitation ID",
+						"in": "path",
+						"name": "invitation_id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Cancel group invitation",
+				"tags": [
+					"groups"
+				]
+			}
+		},
+		"/groups/{id}/members/{user_id}": {
+			"delete": {
+				"description": "Any member can remove another member or leave by passing their own user ID.",
+				"parameters": [
+					{
+						"description": "Group ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					},
+					{
+						"description": "User ID to remove",
+						"in": "path",
+						"name": "user_id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Remove group member",
+				"tags": [
+					"groups"
+				]
+			}
+		},
 		"/notifications/debug": {
 			"get": {
 				"description": "Returns debug information about the current user's notification settings and recent tasks",
@@ -1180,6 +2200,235 @@
 				"summary": "Get notification debug info",
 				"tags": [
 					"notifications"
+				]
+			}
+		},
+		"/notifications/in-app": {
+			"get": {
+				"description": "Returns in-app notifications (e.g. group invites). Use unread_only=true for unread only.",
+				"parameters": [
+					{
+						"description": "Page number (default: 1)",
+						"in": "query",
+						"name": "page",
+						"schema": {
+							"type": "integer"
+						}
+					},
+					{
+						"description": "Items per page (default: 20, max: 100)",
+						"in": "query",
+						"name": "limit",
+						"schema": {
+							"type": "integer"
+						}
+					},
+					{
+						"description": "Only unread notifications",
+						"in": "query",
+						"name": "unread_only",
+						"schema": {
+							"type": "boolean"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.PaginatedInAppNotificationsResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "List in-app notifications",
+				"tags": [
+					"notifications-in-app"
+				]
+			}
+		},
+		"/notifications/in-app/read-all": {
+			"post": {
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Mark all notifications as read",
+				"tags": [
+					"notifications-in-app"
+				]
+			}
+		},
+		"/notifications/in-app/unread-count": {
+			"get": {
+				"description": "Returns how many in-app notifications are unread (for badge display).",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.UnreadCountResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Unread in-app notification count",
+				"tags": [
+					"notifications-in-app"
+				]
+			}
+		},
+		"/notifications/in-app/{id}/read": {
+			"patch": {
+				"parameters": [
+					{
+						"description": "Notification ID",
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Forbidden"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Mark notification as read",
+				"tags": [
+					"notifications-in-app"
 				]
 			}
 		},
@@ -2316,7 +3565,7 @@
 		},
 		"/tasks/{id}/share": {
 			"post": {
-				"description": "Adds the given users to the task's shared list so they can view and update the task. Only the task owner can share. When a user creates a task for another, the task is already shared between the two.",
+				"description": "Adds users to the task's shared list. Only the owner can share. Target users must be members of at least one group in common with the owner.",
 				"parameters": [
 					{
 						"description": "Task ID",
@@ -2511,7 +3760,7 @@
 		},
 		"/users": {
 			"get": {
-				"description": "Retrieves a paginated list of all users in the system. Returns only public information (id, username, email) for use in task assignment.",
+				"description": "Default: users who share at least one group (for share/assign). Use scope=invite to list users available to invite (optional group_id to exclude members and pending invites).",
 				"parameters": [
 					{
 						"description": "Page number (default: 1)",
@@ -2525,6 +3774,22 @@
 						"description": "Items per page (default: 10, max: 100)",
 						"in": "query",
 						"name": "limit",
+						"schema": {
+							"type": "integer"
+						}
+					},
+					{
+						"description": "invite — all users for group invite picker",
+						"in": "query",
+						"name": "scope",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "Group ID when scope=invite (excludes members and pending)",
+						"in": "query",
+						"name": "group_id",
 						"schema": {
 							"type": "integer"
 						}
@@ -2578,6 +3843,62 @@
 					}
 				],
 				"summary": "List users",
+				"tags": [
+					"users"
+				]
+			}
+		},
+		"/users/me": {
+			"get": {
+				"description": "Returns the authenticated user's profile including notification settings",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/models.User"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Not Found"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Get current user profile",
 				"tags": [
 					"users"
 				]

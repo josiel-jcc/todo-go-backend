@@ -414,9 +414,46 @@ curl -X GET "http://localhost:8080/api/v1/tasks?type=casa&completed=false" \
   -H "Authorization: Bearer <seu-token>"
 ```
 
+### Grupos e convites
+
+Usuários só podem **compartilhar** e **atribuir** tarefas a quem compartilha pelo menos um grupo com eles. Entrada em grupos é por **convite aceito** (exceto o criador do grupo).
+
+No primeiro deploy, todos os usuários existentes são migrados automaticamente para o grupo padrão **"Os de casa"** (idempotente, sem perda de tarefas). Novos registros também entram nesse grupo.
+
+```bash
+# Listar meus grupos
+curl -X GET http://localhost:8080/api/v1/groups \
+  -H "Authorization: Bearer <seu-token>"
+
+# Criar grupo
+curl -X POST http://localhost:8080/api/v1/groups \
+  -H "Authorization: Bearer <seu-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Equipe"}'
+
+# Convidar usuário (envia notificação in-app)
+curl -X POST http://localhost:8080/api/v1/groups/1/invitations \
+  -H "Authorization: Bearer <seu-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 2}'
+
+# Aceitar convite
+curl -X POST http://localhost:8080/api/v1/group-invitations/1/accept \
+  -H "Authorization: Bearer <seu-token>"
+
+# Notificações in-app
+curl -X GET http://localhost:8080/api/v1/notifications/in-app/unread-count \
+  -H "Authorization: Bearer <seu-token>"
+```
+
+**Listagem de usuários:**
+
+- `GET /users` — colegas de grupo (share/atribuir)
+- `GET /users?scope=invite&group_id=1` — candidatos a convite
+
 ### Compartilhar tarefa com outros usuários
 
-O dono da tarefa pode compartilhar com quantos usuários quiser (sem limite). Quem recebe o compartilhamento pode ver e editar a tarefa.
+O dono da tarefa pode compartilhar apenas com usuários do **mesmo grupo**. Quem recebe o compartilhamento pode ver e editar a tarefa.
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/tasks/1/share \

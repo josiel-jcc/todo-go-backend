@@ -16,11 +16,24 @@ type UserService interface {
 }
 
 type userService struct {
-	userRepo repositories.UserRepository
+	userRepo             repositories.UserRepository
+	groupRepo            repositories.GroupRepository
+	groupInvitationRepo  repositories.GroupInvitationRepository
+	userNotificationRepo repositories.UserNotificationRepository
 }
 
-func NewUserService(userRepo repositories.UserRepository) UserService {
-	return &userService{userRepo: userRepo}
+func NewUserService(
+	userRepo repositories.UserRepository,
+	groupRepo repositories.GroupRepository,
+	groupInvitationRepo repositories.GroupInvitationRepository,
+	userNotificationRepo repositories.UserNotificationRepository,
+) UserService {
+	return &userService{
+		userRepo:             userRepo,
+		groupRepo:            groupRepo,
+		groupInvitationRepo:  groupInvitationRepo,
+		userNotificationRepo: userNotificationRepo,
+	}
 }
 
 func (s *userService) DeleteAccount(userID uint, password string) error {
@@ -33,6 +46,16 @@ func (s *userService) DeleteAccount(userID uint, password string) error {
 	}
 
 	return database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&models.UserNotification{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("invited_user_id = ? OR invited_by_user_id = ?", userID, userID).
+			Delete(&models.GroupInvitation{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("user_id = ?", userID).Delete(&models.GroupMember{}).Error; err != nil {
+			return err
+		}
 		if err := tx.Where("user_id = ?", userID).Delete(&models.Notification{}).Error; err != nil {
 			return err
 		}
@@ -82,6 +105,15 @@ func (s *userService) ExportAccount(userID uint) (map[string]interface{}, error)
 		return nil, errors.NewInternalServerError(err)
 	}
 
+	var groups []models.Group
+	_ = database.DB.
+		Joins("JOIN group_members ON group_members.group_id = groups.id").
+		Where("group_members.user_id = ?", userID).
+		Find(&groups).Error
+
+	var invitations []models.GroupInvitation
+	_ = database.DB.Where("invited_user_id = ?", userID).Find(&invitations).Error
+
 	profile := map[string]interface{}{
 		"id":                    user.ID,
 		"username":              user.Username,
@@ -94,11 +126,13 @@ func (s *userService) ExportAccount(userID uint) (map[string]interface{}, error)
 	}
 
 	return map[string]interface{}{
-		"exported_at":    user.UpdatedAt,
-		"profile":        profile,
-		"tasks":          tasks,
-		"shared_tasks":   sharedTasks,
-		"tags":           tags,
-		"comments":       comments,
+		"exported_at":         user.UpdatedAt,
+		"profile":             profile,
+		"tasks":               tasks,
+		"shared_tasks":        sharedTasks,
+		"tags":                tags,
+		"comments":            comments,
+		"groups":              groups,
+		"group_invitations":   invitations,
 	}, nil
 }

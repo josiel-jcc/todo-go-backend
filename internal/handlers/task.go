@@ -562,7 +562,7 @@ func (h *TaskHandler) DeleteTask(c *gin.Context) {
 
 // ShareTask shares a task with other users (owner only). No limit on how many users.
 // @Summary      Share a task with users
-// @Description  Adds the given users to the task's shared list so they can view and update the task. Only the task owner can share. When a user creates a task for another, the task is already shared between the two.
+// @Description  Adds users to the task's shared list. Only the owner can share. Target users must be members of at least one group in common with the owner.
 // @Tags         tasks
 // @Accept       json
 // @Produce      json

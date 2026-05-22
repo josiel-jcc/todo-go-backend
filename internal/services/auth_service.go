@@ -14,14 +14,16 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo  repositories.UserRepository
-	jwtSecret string
+	userRepo     repositories.UserRepository
+	jwtSecret    string
+	groupService GroupService
 }
 
-func NewAuthService(userRepo repositories.UserRepository, jwtSecret string) AuthService {
+func NewAuthService(userRepo repositories.UserRepository, jwtSecret string, groupService GroupService) AuthService {
 	return &authService{
-		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		userRepo:     userRepo,
+		jwtSecret:    jwtSecret,
+		groupService: groupService,
 	}
 }
 
@@ -50,6 +52,12 @@ func (s *authService) Register(username, email, password string) (*models.User, 
 
 	if err := s.userRepo.Create(user); err != nil {
 		return nil, "", errors.NewInternalServerError(err)
+	}
+
+	if s.groupService != nil {
+		if err := s.groupService.AddUserToDefaultGroup(user.ID); err != nil {
+			return nil, "", errors.NewInternalServerError(err)
+		}
 	}
 
 	token, _, err := utils.GenerateToken(user.ID, user.Username, s.jwtSecret)
