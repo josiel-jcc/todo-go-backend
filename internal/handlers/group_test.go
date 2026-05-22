@@ -119,7 +119,8 @@ func TestDeleteDefaultGroup_Returns400(t *testing.T) {
 
 	defaultGroup := &models.Group{Name: "Os de casa", CreatedBy: user.ID, IsDefault: true}
 	require.NoError(t, database.DB.Create(defaultGroup).Error)
-	require.NoError(t, database.DB.Create(&models.GroupMember{GroupID: defaultGroup.ID, UserID: user.ID}).Error)
+	groupRepo := repositories.NewGroupRepository()
+	require.NoError(t, groupRepo.AddMember(defaultGroup.ID, user.ID))
 
 	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/api/v1/groups/%d", defaultGroup.ID), nil)
 	req.Header.Set("Authorization", "Bearer "+token)

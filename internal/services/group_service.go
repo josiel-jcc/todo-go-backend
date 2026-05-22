@@ -307,7 +307,11 @@ func (s *groupService) AcceptInvitation(userID, invitationID uint) error {
 		if inv.InvitedUserID != userID || inv.Status != models.GroupInvitationPending {
 			return errors.NewForbiddenError()
 		}
-		member := models.GroupMember{GroupID: inv.GroupID, UserID: userID}
+		member := models.GroupMember{
+			GroupID:  inv.GroupID,
+			UserID:   userID,
+			JoinedAt: time.Now(),
+		}
 		if err := tx.Where(models.GroupMember{GroupID: inv.GroupID, UserID: userID}).
 			FirstOrCreate(&member).Error; err != nil {
 			return err
@@ -322,9 +326,9 @@ func (s *groupService) AcceptInvitation(userID, invitationID uint) error {
 		}
 		pattern := "%\"invitation_id\":" + strconv.FormatUint(uint64(invitationID), 10) + "%"
 		return tx.Model(&models.UserNotification{}).
-			Where("user_id = ? AND type = ? AND read = ? AND payload LIKE ?",
+			Where("user_id = ? AND type = ? AND `read` = ? AND payload LIKE ?",
 				userID, models.UserNotificationTypeGroupInvite, false, pattern).
-			Update("read", true).Error
+			Update("`read`", true).Error
 	})
 	if err != nil {
 		if appErr, ok := err.(*errors.AppError); ok {

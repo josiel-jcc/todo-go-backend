@@ -65,7 +65,7 @@ func (r *groupRepository) FindDefaultGroup() (*models.Group, error) {
 func (r *groupRepository) FindByUserID(userID uint) ([]models.Group, error) {
 	var groups []models.Group
 	err := database.DB.
-		Joins("JOIN group_members ON group_members.group_id = groups.id").
+		Joins("JOIN group_members ON group_members.group_id = `groups`.id").
 		Where("group_members.user_id = ?", userID).
 		Find(&groups).Error
 	return groups, err

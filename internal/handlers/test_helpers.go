@@ -107,7 +107,7 @@ func setupTestDB() *gorm.DB {
 		db.Exec("TRUNCATE TABLE user_notifications")
 		db.Exec("TRUNCATE TABLE group_invitations")
 		db.Exec("TRUNCATE TABLE group_members")
-		db.Exec("TRUNCATE TABLE groups")
+		db.Exec("TRUNCATE TABLE `groups`")
 		db.Exec("TRUNCATE TABLE task_shared_with")
 		db.Exec("TRUNCATE TABLE notifications")
 		db.Exec("TRUNCATE TABLE comments")

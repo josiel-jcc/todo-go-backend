@@ -38,7 +38,7 @@ func (r *userNotificationRepository) FindByID(id uint) (*models.UserNotification
 func (r *userNotificationRepository) ListByUserID(userID uint, unreadOnly bool, page, limit int) ([]models.UserNotification, int64, error) {
 	query := database.DB.Model(&models.UserNotification{}).Where("user_id = ?", userID)
 	if unreadOnly {
-		query = query.Where("read = ?", false)
+		query = query.Where("`read` = ?", false)
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -53,7 +53,7 @@ func (r *userNotificationRepository) ListByUserID(userID uint, unreadOnly bool, 
 func (r *userNotificationRepository) CountUnread(userID uint) (int64, error) {
 	var count int64
 	err := database.DB.Model(&models.UserNotification{}).
-		Where("user_id = ? AND read = ?", userID, false).
+		Where("user_id = ? AND `read` = ?", userID, false).
 		Count(&count).Error
 	return count, err
 }
@@ -61,21 +61,21 @@ func (r *userNotificationRepository) CountUnread(userID uint) (int64, error) {
 func (r *userNotificationRepository) MarkRead(id, userID uint) error {
 	return database.DB.Model(&models.UserNotification{}).
 		Where("id = ? AND user_id = ?", id, userID).
-		Update("read", true).Error
+		Update("`read`", true).Error
 }
 
 func (r *userNotificationRepository) MarkAllRead(userID uint) error {
 	return database.DB.Model(&models.UserNotification{}).
 		Where("user_id = ?", userID).
-		Update("read", true).Error
+		Update("`read`", true).Error
 }
 
 func (r *userNotificationRepository) MarkReadByInvitationID(userID uint, invitationID uint) error {
 	pattern := fmt.Sprintf("%%\"invitation_id\":%d%%", invitationID)
 	return database.DB.Model(&models.UserNotification{}).
-		Where("user_id = ? AND type = ? AND read = ? AND payload LIKE ?",
+		Where("user_id = ? AND type = ? AND `read` = ? AND payload LIKE ?",
 			userID, models.UserNotificationTypeGroupInvite, false, pattern).
-		Update("read", true).Error
+		Update("`read`", true).Error
 }
 
 func (r *userNotificationRepository) DeleteByUserID(userID uint) error {

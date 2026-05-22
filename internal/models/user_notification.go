@@ -19,7 +19,7 @@ type UserNotification struct {
 	UserID    uint                 `json:"user_id" gorm:"not null;index"`
 	Type      UserNotificationType `json:"type" gorm:"type:varchar(30);not null"`
 	Payload   string               `json:"payload" gorm:"type:text;not null"`
-	Read      bool                 `json:"read" gorm:"default:false"`
+	Read      bool                 `json:"read" gorm:"column:read;default:false"`
 	CreatedAt time.Time            `json:"created_at"`
 	UpdatedAt time.Time            `json:"updated_at"`
 	DeletedAt gorm.DeletedAt       `json:"-" gorm:"index"`

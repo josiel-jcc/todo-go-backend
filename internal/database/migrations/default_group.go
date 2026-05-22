@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"time"
 	"todo-go-backend/internal/models"
 
 	"gorm.io/gorm"
@@ -55,8 +56,9 @@ func EnsureDefaultGroup(db *gorm.DB) error {
 			return err
 		}
 
+		now := time.Now()
 		for _, uid := range userIDs {
-			member := models.GroupMember{GroupID: group.ID, UserID: uid}
+			member := models.GroupMember{GroupID: group.ID, UserID: uid, JoinedAt: now}
 			if err := tx.Where(models.GroupMember{GroupID: group.ID, UserID: uid}).
 				FirstOrCreate(&member).Error; err != nil {
 				return err
@@ -75,7 +77,7 @@ func AddUserToDefaultGroup(db *gorm.DB, userID uint) error {
 	if err := db.Where("is_default = ?", true).First(&group).Error; err != nil {
 		return err
 	}
-	member := models.GroupMember{GroupID: group.ID, UserID: userID}
+	member := models.GroupMember{GroupID: group.ID, UserID: userID, JoinedAt: time.Now()}
 	return db.Where(models.GroupMember{GroupID: group.ID, UserID: userID}).
 		FirstOrCreate(&member).Error
 }
