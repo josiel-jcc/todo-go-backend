@@ -48,18 +48,30 @@ Template conforme Art. 37 da LGPD. Preencher e manter atualizado pela organizaç
 
 ---
 
-## Operação 4 — Listagem de usuários (delegação)
+## Operação 4 — Listagem de usuários (delegação e grupos)
 
 | Campo | Valor |
 |-------|-------|
-| Finalidade | Permitir atribuir tarefas a outros usuários |
-| Dados expostos | ID e username (e-mail **não** exposto na listagem) |
+| Finalidade | Atribuir/compartilhar tarefas e convidar para grupos |
+| Dados expostos | ID e username (e-mail **não** exposto na listagem padrão) |
 | Base legal | Execução de contrato |
-| Minimização | Apenas dados necessários para seleção |
+| Minimização | Listagem filtrada por colegas de grupo; `scope=invite` para convites |
 
 ---
 
-## Operação 5 — Logs e segurança
+## Operação 5 — Grupos, convites e notificações in-app
+
+| Campo | Valor |
+|-------|-------|
+| Finalidade | Organizar colaboração; convites com aceite; alertas de convite |
+| Dados pessoais | Nome do grupo, membership, status de convite, payload de notificação in-app |
+| Base legal | Execução de contrato |
+| Retenção | Enquanto conta ativa; removido na exclusão da conta |
+| Nota | Grupo padrão "Os de casa" para migração de usuários existentes |
+
+---
+
+## Operação 6 — Logs e segurança
 
 | Campo | Valor |
 |-------|-------|

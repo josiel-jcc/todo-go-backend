@@ -81,7 +81,19 @@ func setupTestDB() *gorm.DB {
 		}
 	}
 
-	err = db.AutoMigrate(&models.User{}, &models.Task{}, &models.Tag{}, &models.Comment{}, &models.Notification{}, &models.TokenDenylist{})
+	err = db.AutoMigrate(
+		&models.User{},
+		&models.Task{},
+		&models.TaskSharedWith{},
+		&models.Tag{},
+		&models.Comment{},
+		&models.Notification{},
+		&models.TokenDenylist{},
+		&models.Group{},
+		&models.GroupMember{},
+		&models.GroupInvitation{},
+		&models.UserNotification{},
+	)
 	if err != nil {
 		panic("Failed to migrate test database: " + err.Error())
 	}
@@ -92,6 +104,11 @@ func setupTestDB() *gorm.DB {
 	if dbHost != "" {
 		// MySQL - desabilitar foreign keys temporariamente
 		db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+		db.Exec("TRUNCATE TABLE user_notifications")
+		db.Exec("TRUNCATE TABLE group_invitations")
+		db.Exec("TRUNCATE TABLE group_members")
+		db.Exec("TRUNCATE TABLE groups")
+		db.Exec("TRUNCATE TABLE task_shared_with")
 		db.Exec("TRUNCATE TABLE notifications")
 		db.Exec("TRUNCATE TABLE comments")
 		db.Exec("TRUNCATE TABLE task_tags")
@@ -101,6 +118,11 @@ func setupTestDB() *gorm.DB {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 	} else {
 		// SQLite - usar DELETE (TRUNCATE não funciona em SQLite)
+		db.Exec("DELETE FROM user_notifications")
+		db.Exec("DELETE FROM group_invitations")
+		db.Exec("DELETE FROM group_members")
+		db.Exec("DELETE FROM groups")
+		db.Exec("DELETE FROM task_shared_with")
 		db.Exec("DELETE FROM notifications")
 		db.Exec("DELETE FROM comments")
 		db.Exec("DELETE FROM task_tags")
@@ -121,16 +143,28 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository()
 	taskRepo := repositories.NewTaskRepository()
+	groupRepo := repositories.NewGroupRepository()
+	groupInvitationRepo := repositories.NewGroupInvitationRepository()
+	userNotificationRepo := repositories.NewUserNotificationRepository()
+
+	groupService := services.NewGroupService(groupRepo, groupInvitationRepo, userNotificationRepo, userRepo)
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, jwtSecret)
+	authService := services.NewAuthService(userRepo, jwtSecret, groupService)
 	tagRepo := repositories.NewTagRepository()
-	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo)
+	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService)
+
+	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
+	userNotificationService := services.NewUserNotificationService(userNotificationRepo)
 
 	// Initialize handlers
 	cfg := &config.Config{AppEnv: "development", JWTSecret: jwtSecret}
 	authHandler := NewAuthHandler(authService, cfg)
 	taskHandler := NewTaskHandler(taskService)
+	userHandler := NewUserHandler(nil, userRepo, userService, groupService)
+	groupHandler := NewGroupHandler(groupService)
+	groupInvitationHandler := NewGroupInvitationHandler(groupService)
+	userNotificationHandler := NewUserNotificationHandler(userNotificationService)
 
 	// Public routes
 	api := router.Group("/api/v1")
@@ -149,6 +183,25 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 		protected.POST("/tasks", taskHandler.CreateTask)
 		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
 		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
+		protected.POST("/tasks/:id/share", taskHandler.ShareTask)
+
+		protected.GET("/users", userHandler.GetUsers)
+
+		protected.GET("/groups", groupHandler.ListGroups)
+		protected.POST("/groups", groupHandler.CreateGroup)
+		protected.GET("/groups/:id", groupHandler.GetGroup)
+		protected.PUT("/groups/:id", groupHandler.UpdateGroup)
+		protected.DELETE("/groups/:id", groupHandler.DeleteGroup)
+		protected.POST("/groups/:id/invitations", groupHandler.InviteUser)
+		protected.DELETE("/groups/:id/invitations/:invitation_id", groupHandler.CancelInvitation)
+		protected.DELETE("/groups/:id/members/:user_id", groupHandler.RemoveMember)
+
+		protected.GET("/group-invitations", groupInvitationHandler.ListReceived)
+		protected.POST("/group-invitations/:id/accept", groupInvitationHandler.Accept)
+		protected.POST("/group-invitations/:id/decline", groupInvitationHandler.Decline)
+
+		protected.GET("/notifications/in-app", userNotificationHandler.List)
+		protected.GET("/notifications/in-app/unread-count", userNotificationHandler.UnreadCount)
 	}
 
 	return router

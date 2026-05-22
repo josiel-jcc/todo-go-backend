@@ -18,6 +18,7 @@ type UserHandler struct {
 	notificationService *notifications.NotificationService
 	userRepo            repositories.UserRepository
 	userService         services.UserService
+	groupService        services.GroupService
 }
 
 // NewUserHandler creates a new instance of UserHandler
@@ -25,11 +26,13 @@ func NewUserHandler(
 	notificationService *notifications.NotificationService,
 	userRepo repositories.UserRepository,
 	userService services.UserService,
+	groupService services.GroupService,
 ) *UserHandler {
 	return &UserHandler{
 		notificationService: notificationService,
 		userRepo:            userRepo,
 		userService:         userService,
+		groupService:        groupService,
 	}
 }
 
@@ -263,16 +266,18 @@ type PaginatedUsersResponse struct {
 	TotalPages int           `json:"total_pages"`
 }
 
-// GetUsers lists all users in the system with pagination
+// GetUsers lists users for collaboration or inviting to a group.
 // @Summary      List users
-// @Description  Retrieves a paginated list of all users in the system. Returns only public information (id, username, email) for use in task assignment.
+// @Description  Default: users who share at least one group (for share/assign). Use scope=invite to list users available to invite (optional group_id to exclude members and pending invites).
 // @Tags         users
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page   query     int     false  "Page number (default: 1)"
-// @Param        limit  query     int     false  "Items per page (default: 10, max: 100)"
-// @Success      200    {object}  PaginatedUsersResponse
+// @Param        page      query     int     false  "Page number (default: 1)"
+// @Param        limit     query     int     false  "Items per page (default: 10, max: 100)"
+// @Param        scope     query     string  false  "invite — all users for group invite picker"
+// @Param        group_id  query     int     false  "Group ID when scope=invite (excludes members and pending)"
+// @Success      200       {object}  PaginatedUsersResponse
 // @Failure      400    {object}  ErrorResponse
 // @Failure      401    {object}  ErrorResponse
 // @Failure      500    {object}  ErrorResponse
@@ -298,9 +303,25 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 		}
 	}
 
-	users, total, err := h.userRepo.FindAllPaginated(page, limit)
+	userID := c.GetUint("user_id")
+	scope := c.Query("scope")
+
+	var groupID *uint
+	if scope == "invite" {
+		if groupIDStr := c.Query("group_id"); groupIDStr != "" {
+			gid, parseErr := strconv.ParseUint(groupIDStr, 10, 64)
+			if parseErr != nil || gid == 0 {
+				handleError(c, errors.NewInvalidInputError("group_id inválido"))
+				return
+			}
+			g := uint(gid)
+			groupID = &g
+		}
+	}
+
+	users, total, err := h.groupService.ListUsers(userID, scope, groupID, page, limit)
 	if err != nil {
-		handleError(c, errors.NewInternalServerError(err))
+		handleError(c, err)
 		return
 	}
 

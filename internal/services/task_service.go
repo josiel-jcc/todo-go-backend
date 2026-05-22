@@ -67,17 +67,24 @@ type PaginatedTasksResponse struct {
 }
 
 type taskService struct {
-	taskRepo repositories.TaskRepository
-	userRepo repositories.UserRepository
-	tagRepo  repositories.TagRepository
+	taskRepo     repositories.TaskRepository
+	userRepo     repositories.UserRepository
+	tagRepo      repositories.TagRepository
+	groupService GroupService
 }
 
 // NewTaskService creates a new instance of TaskService
-func NewTaskService(taskRepo repositories.TaskRepository, userRepo repositories.UserRepository, tagRepo repositories.TagRepository) TaskService {
+func NewTaskService(
+	taskRepo repositories.TaskRepository,
+	userRepo repositories.UserRepository,
+	tagRepo repositories.TagRepository,
+	groupService GroupService,
+) TaskService {
 	return &taskService{
-		taskRepo: taskRepo,
-		userRepo: userRepo,
-		tagRepo:  tagRepo,
+		taskRepo:     taskRepo,
+		userRepo:     userRepo,
+		tagRepo:      tagRepo,
+		groupService: groupService,
 	}
 }
 
@@ -105,6 +112,11 @@ func (s *taskService) Create(userID uint, req *CreateTaskRequest) (*models.Task,
 			return nil, errors.NewUserNotFoundError()
 		}
 		targetUserID = *req.UserID
+		if targetUserID != userID {
+			if err := s.groupService.AssertCanCollaborateWith(userID, targetUserID); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Validate tags if provided
@@ -405,6 +417,9 @@ func (s *taskService) ShareTask(ownerID, taskID uint, userIDs []uint) error {
 		}
 		if _, err := s.userRepo.FindByID(uid); err != nil {
 			return errors.NewInvalidInputError("One or more user IDs are invalid")
+		}
+		if err := s.groupService.AssertCanCollaborateWith(ownerID, uid); err != nil {
+			return err
 		}
 		if err := s.taskRepo.AddSharedWith(taskID, uid); err != nil {
 			return errors.NewInternalServerError(err)

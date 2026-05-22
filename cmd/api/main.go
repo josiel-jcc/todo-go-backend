@@ -57,10 +57,16 @@ func main() {
 	taskRepo := repositories.NewTaskRepository()
 	tagRepo := repositories.NewTagRepository()
 	commentRepo := repositories.NewCommentRepository()
+	groupRepo := repositories.NewGroupRepository()
+	groupInvitationRepo := repositories.NewGroupInvitationRepository()
+	userNotificationRepo := repositories.NewUserNotificationRepository()
 
-	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
-	userService := services.NewUserService(userRepo)
-	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo)
+	groupService := services.NewGroupService(groupRepo, groupInvitationRepo, userNotificationRepo, userRepo)
+	userNotificationService := services.NewUserNotificationService(userNotificationRepo)
+
+	authService := services.NewAuthService(userRepo, cfg.JWTSecret, groupService)
+	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
+	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService)
 	tagService := services.NewTagService(tagRepo)
 	commentService := services.NewCommentService(commentRepo, taskRepo)
 
@@ -85,7 +91,10 @@ func main() {
 	taskHandler := handlers.NewTaskHandler(taskService)
 	tagHandler := handlers.NewTagHandler(tagService)
 	commentHandler := handlers.NewCommentHandler(commentService)
-	userHandler := handlers.NewUserHandler(notificationService, userRepo, userService)
+	userHandler := handlers.NewUserHandler(notificationService, userRepo, userService, groupService)
+	groupHandler := handlers.NewGroupHandler(groupService)
+	groupInvitationHandler := handlers.NewGroupInvitationHandler(groupService)
+	userNotificationHandler := handlers.NewUserNotificationHandler(userNotificationService)
 
 	go notifications.StartScheduler(cfg, notificationService)
 
@@ -141,6 +150,24 @@ func main() {
 		protected.GET("/users", userHandler.GetUsers)
 		protected.PUT("/users/telegram-chat-id", userHandler.UpdateTelegramChatID)
 		protected.PUT("/users/notifications-enabled", userHandler.UpdateNotificationsEnabled)
+
+		protected.GET("/groups", groupHandler.ListGroups)
+		protected.POST("/groups", groupHandler.CreateGroup)
+		protected.GET("/groups/:id", groupHandler.GetGroup)
+		protected.PUT("/groups/:id", groupHandler.UpdateGroup)
+		protected.DELETE("/groups/:id", groupHandler.DeleteGroup)
+		protected.POST("/groups/:id/invitations", groupHandler.InviteUser)
+		protected.DELETE("/groups/:id/invitations/:invitation_id", groupHandler.CancelInvitation)
+		protected.DELETE("/groups/:id/members/:user_id", groupHandler.RemoveMember)
+
+		protected.GET("/group-invitations", groupInvitationHandler.ListReceived)
+		protected.POST("/group-invitations/:id/accept", groupInvitationHandler.Accept)
+		protected.POST("/group-invitations/:id/decline", groupInvitationHandler.Decline)
+
+		protected.GET("/notifications/in-app", userNotificationHandler.List)
+		protected.GET("/notifications/in-app/unread-count", userNotificationHandler.UnreadCount)
+		protected.PATCH("/notifications/in-app/:id/read", userNotificationHandler.MarkRead)
+		protected.POST("/notifications/in-app/read-all", userNotificationHandler.MarkAllRead)
 
 		if !cfg.IsProduction() {
 			protected.POST("/notifications/test", userHandler.TestNotifications)

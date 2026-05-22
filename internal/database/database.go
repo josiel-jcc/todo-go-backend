@@ -2,7 +2,9 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"todo-go-backend/internal/config"
+	"todo-go-backend/internal/database/migrations"
 	"todo-go-backend/internal/models"
 
 	"gorm.io/driver/mysql"
@@ -50,7 +52,20 @@ func Connect(cfg *config.Config) error {
 		&models.Comment{},
 		&models.Notification{},
 		&models.TokenDenylist{},
+		&models.Group{},
+		&models.GroupMember{},
+		&models.GroupInvitation{},
+		&models.UserNotification{},
 	)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	if err := migrations.EnsureDefaultGroup(DB); err != nil {
+		log.Printf("Warning: default group migration failed: %v", err)
+		return err
+	}
+
+	return nil
 }

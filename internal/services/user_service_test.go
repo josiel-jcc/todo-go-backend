@@ -18,7 +18,7 @@ func TestUserService_DeleteAccount_InvalidPassword(t *testing.T) {
 		Password: hashed,
 	})
 
-	service := NewUserService(mockRepo)
+	service := NewUserService(mockRepo, nil, nil, nil)
 	err := service.DeleteAccount(1, "wrong-password")
 
 	assert.Error(t, err)

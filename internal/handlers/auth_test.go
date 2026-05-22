@@ -43,6 +43,12 @@ func TestRegister(t *testing.T) {
 			}
 		}
 		assert.True(t, hasAuthCookie)
+
+		var user models.User
+		database.DB.Where("username = ?", "testuser").First(&user)
+		var memberCount int64
+		database.DB.Model(&models.GroupMember{}).Where("user_id = ?", user.ID).Count(&memberCount)
+		assert.GreaterOrEqual(t, memberCount, int64(1))
 	})
 
 	t.Run("Duplicate username", func(t *testing.T) {
