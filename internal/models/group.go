@@ -7,11 +7,6 @@ import (
 )
 
 // Group represents a user group for task collaboration.
-// Table name is quoted because "groups" is a reserved word in MySQL.
-func (Group) TableName() string {
-	return "`groups`"
-}
-
 type Group struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
 	Name      string         `json:"name" gorm:"type:varchar(100);not null"`
