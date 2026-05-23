@@ -49,7 +49,8 @@ services:
       CORS_MAX_AGE: ${CORS_MAX_AGE:-3600}
       # Notifications Configuration
       NOTIFICATIONS_ENABLED: ${NOTIFICATIONS_ENABLED:-true}
-      NOTIFICATION_CHECK_INTERVAL: ${NOTIFICATION_CHECK_INTERVAL:-0 * * * *}
+      NOTIFICATION_CHECK_INTERVAL: ${NOTIFICATION_CHECK_INTERVAL:-* * * * *}
+      RUN_SCHEDULER: ${RUN_SCHEDULER:-true}
       # Email SMTP Configuration
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -58,6 +59,10 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       # Telegram Bot Configuration
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # Web Push VAPID Configuration
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     depends_on:
       mysql:
         condition: service_healthy
