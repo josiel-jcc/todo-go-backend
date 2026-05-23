@@ -25,9 +25,10 @@ type CreateTaskRequest struct {
 	Description string
 	Type        models.TaskType
 	Priority    *models.Priority // Optional: task priority
-	DueDate     *time.Time
-	UserID      *uint   // Optional: ID of the user to whom the task will be assigned
-	TagIDs      []uint  // Optional: IDs of tags to associate with the task
+	DueDate               *time.Time
+	ReminderMinutesBefore *int
+	UserID                *uint  // Optional: ID of the user to whom the task will be assigned
+	TagIDs                []uint // Optional: IDs of tags to associate with the task
 }
 
 // UpdateTaskRequest represents a task update request
@@ -36,9 +37,10 @@ type UpdateTaskRequest struct {
 	Description *string
 	Type        *models.TaskType
 	Priority    *models.Priority
-	DueDate     *time.Time
-	Completed   *bool
-	TagIDs      *[]uint // Optional: IDs of tags to associate with the task (nil = no change, empty = remove all)
+	DueDate                 *time.Time
+	ReminderMinutesBefore   *int
+	Completed               *bool
+	TagIDs                  *[]uint // Optional: IDs of tags to associate with the task (nil = no change, empty = remove all)
 }
 
 // TaskFilters defines filters for task search
@@ -67,10 +69,11 @@ type PaginatedTasksResponse struct {
 }
 
 type taskService struct {
-	taskRepo     repositories.TaskRepository
-	userRepo     repositories.UserRepository
-	tagRepo      repositories.TagRepository
-	groupService GroupService
+	taskRepo         repositories.TaskRepository
+	userRepo         repositories.UserRepository
+	tagRepo          repositories.TagRepository
+	groupService     GroupService
+	notificationRepo repositories.NotificationRepository
 }
 
 // NewTaskService creates a new instance of TaskService
@@ -79,12 +82,14 @@ func NewTaskService(
 	userRepo repositories.UserRepository,
 	tagRepo repositories.TagRepository,
 	groupService GroupService,
+	notificationRepo repositories.NotificationRepository,
 ) TaskService {
 	return &taskService{
-		taskRepo:     taskRepo,
-		userRepo:     userRepo,
-		tagRepo:      tagRepo,
-		groupService: groupService,
+		taskRepo:         taskRepo,
+		userRepo:         userRepo,
+		tagRepo:          tagRepo,
+		groupService:     groupService,
+		notificationRepo: notificationRepo,
 	}
 }
 
@@ -101,6 +106,10 @@ func (s *taskService) Create(userID uint, req *CreateTaskRequest) (*models.Task,
 			return nil, errors.NewInvalidInputError("Invalid priority. Must be one of: baixa, media, alta, urgente")
 		}
 		priority = *req.Priority
+	}
+
+	if req.ReminderMinutesBefore != nil && !IsValidReminderMinutes(*req.ReminderMinutesBefore) {
+		return nil, errors.NewInvalidInputError("reminder_minutes_before must be one of: 5, 10, 15, 30, 60")
 	}
 
 	// Determine target user
@@ -138,15 +147,16 @@ func (s *taskService) Create(userID uint, req *CreateTaskRequest) (*models.Task,
 		assignedBy = &userID
 	}
 	task := &models.Task{
-		Title:       req.Title,
-		Description: req.Description,
-		Type:        req.Type,
-		Priority:    priority,
-		DueDate:     req.DueDate,
-		UserID:      targetUserID,
-		AssignedBy:  assignedBy,
-		Completed:   false,
-		Tags:        tags,
+		Title:                 req.Title,
+		Description:           req.Description,
+		Type:                  req.Type,
+		Priority:              priority,
+		DueDate:               req.DueDate,
+		ReminderMinutesBefore: req.ReminderMinutesBefore,
+		UserID:                targetUserID,
+		AssignedBy:            assignedBy,
+		Completed:             false,
+		Tags:                  tags,
 	}
 
 	if err := s.taskRepo.Create(task); err != nil {
@@ -326,6 +336,9 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 		return nil, errors.NewForbiddenError()
 	}
 
+	oldDueDate := copyTimePtr(task.DueDate)
+	oldReminderMinutes := copyIntPtr(task.ReminderMinutesBefore)
+
 	// Update fields
 	if req.Title != nil {
 		task.Title = *req.Title
@@ -348,6 +361,12 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 	if req.DueDate != nil {
 		task.DueDate = req.DueDate
 	}
+	if req.ReminderMinutesBefore != nil {
+		if !IsValidReminderMinutes(*req.ReminderMinutesBefore) {
+			return nil, errors.NewInvalidInputError("reminder_minutes_before must be one of: 5, 10, 15, 30, 60")
+		}
+		task.ReminderMinutesBefore = req.ReminderMinutesBefore
+	}
 	if req.Completed != nil {
 		task.Completed = *req.Completed
 	}
@@ -367,6 +386,12 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 				return nil, errors.NewInvalidInputError("One or more tags not found or don't belong to the user")
 			}
 			task.Tags = foundTags
+		}
+	}
+
+	if dueDateChanged(oldDueDate, task.DueDate) || reminderMinutesChanged(oldReminderMinutes, task.ReminderMinutesBefore) {
+		if err := s.notificationRepo.DeleteByTaskID(taskID); err != nil {
+			return nil, errors.NewInternalServerError(err)
 		}
 	}
 
@@ -441,6 +466,50 @@ func (s *taskService) UnshareTask(ownerID, taskID uint, sharedUserID uint) error
 		return errors.NewInternalServerError(err)
 	}
 	return nil
+}
+
+func copyTimePtr(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	v := *t
+	return &v
+}
+
+func copyIntPtr(v *int) *int {
+	if v == nil {
+		return nil
+	}
+	n := *v
+	return &n
+}
+
+func dueDateChanged(before, after *time.Time) bool {
+	return !timePtrEqual(before, after)
+}
+
+func reminderMinutesChanged(before, after *int) bool {
+	return !intPtrEqual(before, after)
+}
+
+func timePtrEqual(a, b *time.Time) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.UTC().Truncate(time.Second).Equal(b.UTC().Truncate(time.Second))
+}
+
+func intPtrEqual(a, b *int) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 // isValidTaskType checks if the task type is valid

@@ -525,7 +525,11 @@ A pipeline de CI usa MySQL automaticamente. Os testes são executados automatica
 | `CORS_ALLOW_CREDENTIALS` | Permitir credenciais | `true` |
 | `CORS_MAX_AGE` | Max age para preflight requests (segundos) | `3600` |
 | `NOTIFICATIONS_ENABLED` | Habilitar notificações | `true` |
-| `NOTIFICATION_CHECK_INTERVAL` | Intervalo de verificação (cron) | `0 * * * *` |
+| `NOTIFICATION_CHECK_INTERVAL` | Intervalo de verificação (cron) | `* * * * *` |
+| `RUN_SCHEDULER` | Executar scheduler neste processo (`false` em réplicas extras) | `true` |
+| `VAPID_PUBLIC_KEY` | Chave pública VAPID para Web Push | - |
+| `VAPID_PRIVATE_KEY` | Chave privada VAPID para Web Push | - |
+| `VAPID_SUBJECT` | Contato VAPID (`mailto:` ou URL HTTPS) | - |
 | `SMTP_HOST` | Host SMTP para email | - |
 | `SMTP_PORT` | Porta SMTP | `587` |
 | `SMTP_USER` | Usuário SMTP | - |

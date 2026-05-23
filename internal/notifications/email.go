@@ -26,13 +26,14 @@ func NewEmailService(host, port, user, password, from string) *EmailService {
 	}
 }
 
-// SendNotification sends a notification email
-func (s *EmailService) SendNotification(user *models.User, task *models.Task, notificationType models.NotificationType) error {
+// SendNotification sends a notification email.
+// minutesBefore is used for task_reminder messages (effective offset before due_date).
+func (s *EmailService) SendNotification(user *models.User, task *models.Task, notificationType models.NotificationType, minutesBefore int) error {
 	if s.host == "" || s.user == "" || s.password == "" {
 		return fmt.Errorf("email service not configured")
 	}
 
-	subject, body := s.buildEmailContent(task, notificationType)
+	subject, body := s.buildEmailContent(task, notificationType, minutesBefore)
 
 	// Setup authentication
 	auth := smtp.PlainAuth("", s.user, s.password, s.host)
@@ -56,11 +57,20 @@ func (s *EmailService) SendNotification(user *models.User, task *models.Task, no
 }
 
 // buildEmailContent builds email subject and body based on notification type
-func (s *EmailService) buildEmailContent(task *models.Task, notificationType models.NotificationType) (string, string) {
+func (s *EmailService) buildEmailContent(task *models.Task, notificationType models.NotificationType, minutesBefore int) (string, string) {
 	var subject string
 	var body string
 
 	switch notificationType {
+	case models.NotificationTypeTaskReminder:
+		subject = fmt.Sprintf("Lembrete: %s", task.Title)
+		body = fmt.Sprintf(`
+			<html>
+			<body>
+				<p>Lembrete: a tarefa "<strong>%s</strong>" vence em %d minutos</p>
+			</body>
+			</html>
+		`, task.Title, minutesBefore)
 	case models.NotificationTypeDueSoon:
 		subject = fmt.Sprintf("⏰ Tarefa vence amanhã: %s", task.Title)
 		body = fmt.Sprintf(`

@@ -23,8 +23,9 @@ func NewTelegramService(botToken string) *TelegramService {
 	}
 }
 
-// SendNotification sends a notification via Telegram
-func (s *TelegramService) SendNotification(chatID string, task *models.Task, notificationType models.NotificationType) error {
+// SendNotification sends a notification via Telegram.
+// minutesBefore is used for task_reminder messages (effective offset before due_date).
+func (s *TelegramService) SendNotification(chatID string, task *models.Task, notificationType models.NotificationType, minutesBefore int) error {
 	if s.botToken == "" {
 		return fmt.Errorf("telegram bot token not configured")
 	}
@@ -33,7 +34,7 @@ func (s *TelegramService) SendNotification(chatID string, task *models.Task, not
 		return fmt.Errorf("user telegram chat ID not configured")
 	}
 
-	message := s.buildMessage(task, notificationType)
+	message := s.buildMessage(task, notificationType, minutesBefore)
 
 	url := fmt.Sprintf("%s/sendMessage", s.apiURL)
 	
@@ -87,11 +88,17 @@ func (s *TelegramService) SendNotification(chatID string, task *models.Task, not
 }
 
 // buildMessage builds Telegram message based on notification type
-func (s *TelegramService) buildMessage(task *models.Task, notificationType models.NotificationType) string {
+func (s *TelegramService) buildMessage(task *models.Task, notificationType models.NotificationType, minutesBefore int) string {
 	var emoji string
 	var title string
 
 	switch notificationType {
+	case models.NotificationTypeTaskReminder:
+		return fmt.Sprintf(
+			"🔔 Lembrete: a tarefa <b>%s</b> vence em %d minutos",
+			task.Title,
+			minutesBefore,
+		)
 	case models.NotificationTypeDueSoon:
 		emoji = "⏰"
 		title = "Tarefa vence amanhã!"

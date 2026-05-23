@@ -30,9 +30,10 @@ type CreateTaskRequest struct {
 	Description string          `json:"description" example:"Clean all rooms"`
 	Type        models.TaskType `json:"type" binding:"required,oneof=casa trabalho lazer saude" example:"casa"`
 	Priority    *string         `json:"priority" binding:"omitempty,oneof=baixa media alta urgente" example:"alta"` // Optional: task priority
-	DueDate     *string         `json:"due_date" example:"2024-12-31T23:59:59Z"`                                    // ISO 8601 format
-	UserID      *uint           `json:"user_id" example:"2"`                                                        // Optional: if provided, assign to another user
-	TagIDs      []uint          `json:"tag_ids"`                                                                    // Optional: IDs of tags to associate
+	DueDate               *string `json:"due_date" example:"2024-12-31T23:59:59Z"`                                    // ISO 8601 format
+	ReminderMinutesBefore *int    `json:"reminder_minutes_before" example:"10"`                                       // Optional: minutes before due_date (5,10,15,30,60); omit to use user default
+	UserID                *uint   `json:"user_id" example:"2"`                                                        // Optional: if provided, assign to another user
+	TagIDs                []uint  `json:"tag_ids"`                                                                    // Optional: IDs of tags to associate
 }
 
 // ShareTaskRequest represents a request to share a task with users
@@ -46,9 +47,10 @@ type UpdateTaskRequest struct {
 	Description *string          `json:"description" example:"Updated description"`
 	Type        *models.TaskType `json:"type" binding:"omitempty,oneof=casa trabalho lazer saude" example:"trabalho"`
 	Priority    *string          `json:"priority" binding:"omitempty,oneof=baixa media alta urgente" example:"urgente"`
-	DueDate     *string          `json:"due_date" example:"2024-12-31T23:59:59Z"`
-	Completed   *bool            `json:"completed" example:"true"`
-	TagIDs      *[]uint          `json:"tag_ids"` // Optional: nil = no change, [] = remove all, [1,2] = set tags
+	DueDate               *string          `json:"due_date" example:"2024-12-31T23:59:59Z"`
+	ReminderMinutesBefore *int             `json:"reminder_minutes_before" example:"15"` // Optional: 5,10,15,30,60; null clears override
+	Completed             *bool            `json:"completed" example:"true"`
+	TagIDs                *[]uint          `json:"tag_ids"` // Optional: nil = no change, [] = remove all, [1,2] = set tags
 }
 
 // CreateTask creates a new task
@@ -92,14 +94,20 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		priority = &p
 	}
 
+	if req.ReminderMinutesBefore != nil && !services.IsValidReminderMinutes(*req.ReminderMinutesBefore) {
+		handleError(c, errors.NewInvalidInputError("reminder_minutes_before must be one of: 5, 10, 15, 30, 60"))
+		return
+	}
+
 	createReq := &services.CreateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		Type:        req.Type,
-		Priority:    priority,
-		DueDate:     dueDate,
-		UserID:      req.UserID,
-		TagIDs:      req.TagIDs,
+		Title:                 req.Title,
+		Description:           req.Description,
+		Type:                  req.Type,
+		Priority:              priority,
+		DueDate:               dueDate,
+		ReminderMinutesBefore: req.ReminderMinutesBefore,
+		UserID:                req.UserID,
+		TagIDs:                req.TagIDs,
 	}
 
 	task, err := h.taskService.Create(userID, createReq)
@@ -510,14 +518,20 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		priority = &p
 	}
 
+	if req.ReminderMinutesBefore != nil && !services.IsValidReminderMinutes(*req.ReminderMinutesBefore) {
+		handleError(c, errors.NewInvalidInputError("reminder_minutes_before must be one of: 5, 10, 15, 30, 60"))
+		return
+	}
+
 	updateReq := &services.UpdateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		Type:        req.Type,
-		Priority:    priority,
-		DueDate:     dueDate,
-		Completed:   req.Completed,
-		TagIDs:      req.TagIDs,
+		Title:                 req.Title,
+		Description:           req.Description,
+		Type:                  req.Type,
+		Priority:              priority,
+		DueDate:               dueDate,
+		ReminderMinutesBefore: req.ReminderMinutesBefore,
+		Completed:             req.Completed,
+		TagIDs:                req.TagIDs,
 	}
 
 	task, err := h.taskService.Update(userID, uint(taskID), updateReq)

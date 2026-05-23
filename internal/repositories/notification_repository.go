@@ -10,6 +10,8 @@ import (
 type NotificationRepository interface {
 	Create(notification *models.Notification) error
 	Exists(userID, taskID uint, notificationType models.NotificationType, channel models.NotificationChannel, date time.Time) (bool, error)
+	ExistsTaskReminder(userID, taskID uint, channel models.NotificationChannel, taskDueDate time.Time) (bool, error)
+	DeleteByTaskID(taskID uint) error
 	FindByUserID(userID uint) ([]models.Notification, error)
 }
 
@@ -40,6 +42,30 @@ func (r *notificationRepository) Exists(userID, taskID uint, notificationType mo
 	}
 
 	return count > 0, nil
+}
+
+func normalizeTaskDueDateUTC(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Second)
+}
+
+// ExistsTaskReminder checks if a task_reminder was already sent for the given due_date fingerprint.
+func (r *notificationRepository) ExistsTaskReminder(userID, taskID uint, channel models.NotificationChannel, taskDueDate time.Time) (bool, error) {
+	var count int64
+	dueUTC := normalizeTaskDueDateUTC(taskDueDate)
+
+	err := database.DB.Model(&models.Notification{}).
+		Where("user_id = ? AND task_id = ? AND type = ? AND channel = ? AND task_due_date = ?",
+			userID, taskID, models.NotificationTypeTaskReminder, channel, dueUTC).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func (r *notificationRepository) DeleteByTaskID(taskID uint) error {
+	return database.DB.Where("task_id = ?", taskID).Delete(&models.Notification{}).Error
 }
 
 func (r *notificationRepository) FindByUserID(userID uint) ([]models.Notification, error) {
