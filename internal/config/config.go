@@ -37,6 +37,7 @@ type Config struct {
 	// Notifications configuration
 	NotificationsEnabled      bool
 	NotificationCheckInterval string
+	RunScheduler              bool
 	// Email SMTP configuration
 	SMTPHost     string
 	SMTPPort     string
@@ -45,6 +46,10 @@ type Config struct {
 	SMTPFrom     string
 	// Telegram Bot configuration
 	TelegramBotToken string
+	// Web Push VAPID configuration
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+	VAPIDSubject    string // mailto:admin@example.com
 }
 
 func Load() (*Config, error) {
@@ -65,6 +70,11 @@ func Load() (*Config, error) {
 	notificationsEnabled := true
 	if enabledStr := getEnv("NOTIFICATIONS_ENABLED", ""); enabledStr != "" {
 		notificationsEnabled = enabledStr == "true" || enabledStr == "1"
+	}
+
+	runScheduler := true
+	if schedulerStr := getEnv("RUN_SCHEDULER", ""); schedulerStr != "" {
+		runScheduler = schedulerStr == "true" || schedulerStr == "1"
 	}
 
 	appEnv := getEnv("APP_ENV", "development")
@@ -103,12 +113,16 @@ func Load() (*Config, error) {
 		CORSMaxAge:                corsMaxAge,
 		NotificationsEnabled:      notificationsEnabled,
 		NotificationCheckInterval: getEnv("NOTIFICATION_CHECK_INTERVAL", "0 * * * *"),
+		RunScheduler:              runScheduler,
 		SMTPHost:                  getEnv("SMTP_HOST", ""),
 		SMTPPort:                  getEnv("SMTP_PORT", "587"),
 		SMTPUser:                  getEnv("SMTP_USER", ""),
 		SMTPPassword:              getEnv("SMTP_PASSWORD", ""),
 		SMTPFrom:                  getEnv("SMTP_FROM", ""),
 		TelegramBotToken:          getEnv("TELEGRAM_BOT_TOKEN", ""),
+		VAPIDPublicKey:            getEnv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey:           getEnv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:              getEnv("VAPID_SUBJECT", ""),
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -163,8 +177,10 @@ func logConfigStatus(cfg *Config) {
 	log.Printf("CORS Allow Credentials: %v", cfg.CORSAllowCredentials)
 	log.Printf("Cookie Secure: %v", cfg.CookieSecure)
 	log.Printf("Notifications Enabled: %v", cfg.NotificationsEnabled)
+	log.Printf("Run Scheduler: %v", cfg.RunScheduler)
 	log.Printf("SMTP Host: %s", maskIfEmpty(cfg.SMTPHost))
 	log.Printf("Telegram Bot Token: %s", maskIfEmpty(cfg.TelegramBotToken))
+	log.Printf("VAPID Keys: %s", maskIfEmpty(cfg.VAPIDPublicKey))
 	log.Println("===========================")
 }
 

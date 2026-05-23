@@ -1,181 +1,220 @@
 package notifications
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
+	"sync"
 	"time"
-	"todo-go-backend/internal/database"
 	"todo-go-backend/internal/models"
 	"todo-go-backend/internal/repositories"
 )
 
+const maxConcurrentReminderSends = 10
+
 // NotificationService handles notification logic
 type NotificationService struct {
-	emailService     *EmailService
-	telegramService  *TelegramService
-	notificationRepo repositories.NotificationRepository
-	taskRepo         repositories.TaskRepository
-	userRepo         repositories.UserRepository
+	emailService         *EmailService
+	telegramService      *TelegramService
+	pushService          *PushService
+	notificationRepo     repositories.NotificationRepository
+	userNotificationRepo repositories.UserNotificationRepository
+	taskRepo             repositories.TaskRepository
+	userRepo             repositories.UserRepository
 }
 
 // NewNotificationService creates a new notification service
 func NewNotificationService(
 	emailService *EmailService,
 	telegramService *TelegramService,
+	pushService *PushService,
 	notificationRepo repositories.NotificationRepository,
+	userNotificationRepo repositories.UserNotificationRepository,
 	taskRepo repositories.TaskRepository,
 	userRepo repositories.UserRepository,
 ) *NotificationService {
 	return &NotificationService{
-		emailService:     emailService,
-		telegramService:  telegramService,
-		notificationRepo: notificationRepo,
-		taskRepo:         taskRepo,
-		userRepo:         userRepo,
+		emailService:         emailService,
+		telegramService:      telegramService,
+		pushService:          pushService,
+		notificationRepo:     notificationRepo,
+		userNotificationRepo: userNotificationRepo,
+		taskRepo:             taskRepo,
+		userRepo:             userRepo,
 	}
 }
 
-// CheckAndSendNotifications checks for tasks that need notifications and sends them
+// effectiveReminderMinutes returns task override or user default reminder offset.
+func effectiveReminderMinutes(task models.Task, user models.User) int {
+	if task.ReminderMinutesBefore != nil {
+		return *task.ReminderMinutesBefore
+	}
+	return user.ReminderMinutesBefore
+}
+
+// shouldSendInWindow is true when reminderAt falls in [now-1min, now).
+func shouldSendInWindow(reminderAt, now time.Time) bool {
+	nowUTC := now.UTC()
+	reminderUTC := reminderAt.UTC()
+	windowStart := nowUTC.Add(-1 * time.Minute)
+	return !reminderUTC.Before(windowStart) && reminderUTC.Before(nowUTC)
+}
+
+func taskDueDateFingerprint(dueDate time.Time) time.Time {
+	return dueDate.UTC().Truncate(time.Second)
+}
+
+// CheckAndSendNotifications runs the timed task_reminder scheduler tick.
 func (s *NotificationService) CheckAndSendNotifications() error {
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	tomorrow := today.Add(24 * time.Hour)
+	start := time.Now()
+	now := start.UTC()
 
-	log.Printf("Starting notification check at %s", now.Format("2006-01-02 15:04:05"))
-	log.Printf("Today: %s, Tomorrow: %s", today.Format("2006-01-02"), tomorrow.Format("2006-01-02"))
-
-	// Get all active tasks (not completed)
-	var tasks []models.Task
-	if err := database.DB.
-		Where("completed = ? AND due_date IS NOT NULL", false).
-		Preload("User").
-		Find(&tasks).Error; err != nil {
-		log.Printf("Error fetching tasks: %v", err)
+	candidates, err := s.taskRepo.FindReminderCandidates(now)
+	if err != nil {
 		return err
 	}
 
-	log.Printf("Found %d tasks with due dates", len(tasks))
+	sem := make(chan struct{}, maxConcurrentReminderSends)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	sent := 0
 
-	processedCount := 0
-	skippedCount := 0
-	notificationCount := 0
-
-	for _, task := range tasks {
+	for i := range candidates {
+		task := &candidates[i]
 		if task.DueDate == nil {
-			log.Printf("Task %d: skipping (no due date)", task.ID)
-			skippedCount++
 			continue
 		}
 
-		dueDate := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
-
-		// Check if user has notifications enabled
-		if !task.User.NotificationsEnabled {
-			log.Printf("Task %d: skipping (user notifications disabled)", task.ID)
-			skippedCount++
+		offset := effectiveReminderMinutes(*task, task.User)
+		reminderAt := task.DueDate.UTC().Add(-time.Duration(offset) * time.Minute)
+		if !shouldSendInWindow(reminderAt, now) {
 			continue
 		}
 
-		log.Printf("Task %d: due_date=%s, user_id=%d, notifications_enabled=%v",
-			task.ID, dueDate.Format("2006-01-02"), task.UserID, task.User.NotificationsEnabled)
+		wg.Add(1)
+		go func(t *models.Task, minutesBefore int) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
 
-		// Check for overdue tasks
-		if dueDate.Before(today) {
-			log.Printf("Task %d: OVERDUE (due %s)", task.ID, dueDate.Format("2006-01-02"))
-			s.sendNotification(&task, models.NotificationTypeOverdue, today)
-			notificationCount++
-		} else if dueDate.Equal(today) {
-			log.Printf("Task %d: DUE TODAY", task.ID)
-			s.sendNotification(&task, models.NotificationTypeDueToday, today)
-			notificationCount++
-		} else if dueDate.Equal(tomorrow) {
-			log.Printf("Task %d: DUE SOON (due tomorrow)", task.ID)
-			s.sendNotification(&task, models.NotificationTypeDueSoon, today)
-			notificationCount++
-		} else {
-			log.Printf("Task %d: not due yet (due %s)", task.ID, dueDate.Format("2006-01-02"))
-		}
-		processedCount++
+			n := s.sendTaskReminder(t, minutesBefore)
+			mu.Lock()
+			sent += n
+			mu.Unlock()
+		}(task, offset)
 	}
 
-	log.Printf("Notification check completed: %d processed, %d skipped, %d notifications sent", processedCount, skippedCount, notificationCount)
+	wg.Wait()
+
+	elapsed := time.Since(start).Milliseconds()
+	log.Printf("notification tick: candidates=%d sent=%d elapsed_ms=%d", len(candidates), sent, elapsed)
 	return nil
 }
 
-// sendNotification sends notification via configured channels
-func (s *NotificationService) sendNotification(task *models.Task, notificationType models.NotificationType, date time.Time) {
+// sendTaskReminder sends task_reminder on configured channels (email, telegram, push, in-app).
+func (s *NotificationService) sendTaskReminder(task *models.Task, minutesBefore int) int {
+	sent := 0
 	user := task.User
+	dueFP := taskDueDateFingerprint(*task.DueDate)
+	notificationType := models.NotificationTypeTaskReminder
 
-	// Send email notification
 	if user.Email != "" {
-		log.Printf("Checking if email notification already sent for task %d, type %s", task.ID, notificationType)
-		exists, err := s.notificationRepo.Exists(
-			task.UserID,
-			task.ID,
-			notificationType,
-			models.NotificationChannelEmail,
-			date,
+		exists, err := s.notificationRepo.ExistsTaskReminder(
+			task.UserID, task.ID, models.NotificationChannelEmail, *task.DueDate,
 		)
 		if err != nil {
-			log.Printf("Error checking email notification existence: %v", err)
-		} else if exists {
-			log.Printf("Email notification already sent today for task %d, skipping", task.ID)
-		} else {
-			log.Printf("Sending email notification for task %d to user_id=%d", task.ID, user.ID)
-			if err := s.emailService.SendNotification(&user, task, notificationType); err != nil {
-				log.Printf("Failed to send email notification: %v", err)
-			} else {
-				log.Printf("Email notification sent successfully for task %d", task.ID)
-				// Record notification
-				notification := &models.Notification{
-					UserID:  task.UserID,
-					TaskID:  task.ID,
-					Type:    notificationType,
-					Channel: models.NotificationChannelEmail,
-					SentAt:  time.Now(),
-				}
-				if err := s.notificationRepo.Create(notification); err != nil {
-					log.Printf("Failed to record email notification: %v", err)
-				}
+			log.Printf("Error checking email task_reminder for task %d: %v", task.ID, err)
+		} else if !exists {
+			if err := s.emailService.SendNotification(&user, task, notificationType, minutesBefore); err != nil {
+				log.Printf("Failed to send email task_reminder for task %d: %v", task.ID, err)
+			} else if s.recordTaskReminder(task, models.NotificationChannelEmail, dueFP) {
+				sent++
 			}
 		}
-	} else {
-		log.Printf("Task %d: user has no email address, skipping email notification", task.ID)
 	}
 
-	// Send Telegram notification
 	if user.TelegramChatID != nil && *user.TelegramChatID != "" {
-		log.Printf("Checking if telegram notification already sent for task %d, type %s", task.ID, notificationType)
-		exists, err := s.notificationRepo.Exists(
-			task.UserID,
-			task.ID,
-			notificationType,
-			models.NotificationChannelTelegram,
-			date,
+		exists, err := s.notificationRepo.ExistsTaskReminder(
+			task.UserID, task.ID, models.NotificationChannelTelegram, *task.DueDate,
 		)
 		if err != nil {
-			log.Printf("Error checking telegram notification existence: %v", err)
-		} else if exists {
-			log.Printf("Telegram notification already sent today for task %d, skipping", task.ID)
-		} else {
-			log.Printf("Sending telegram notification for task %d to user_id=%d", task.ID, user.ID)
-			if err := s.telegramService.SendNotification(*user.TelegramChatID, task, notificationType); err != nil {
-				log.Printf("Failed to send telegram notification: %v", err)
-			} else {
-				log.Printf("Telegram notification sent successfully for task %d", task.ID)
-				// Record notification
-				notification := &models.Notification{
-					UserID:  task.UserID,
-					TaskID:  task.ID,
-					Type:    notificationType,
-					Channel: models.NotificationChannelTelegram,
-					SentAt:  time.Now(),
-				}
-				if err := s.notificationRepo.Create(notification); err != nil {
-					log.Printf("Failed to record telegram notification: %v", err)
-				}
+			log.Printf("Error checking telegram task_reminder for task %d: %v", task.ID, err)
+		} else if !exists {
+			if err := s.telegramService.SendNotification(*user.TelegramChatID, task, notificationType, minutesBefore); err != nil {
+				log.Printf("Failed to send telegram task_reminder for task %d: %v", task.ID, err)
+			} else if s.recordTaskReminder(task, models.NotificationChannelTelegram, dueFP) {
+				sent++
 			}
 		}
-	} else {
-		log.Printf("Task %d: user has no telegram chat ID, skipping telegram notification", task.ID)
 	}
+
+	exists, err := s.notificationRepo.ExistsTaskReminder(
+		task.UserID, task.ID, models.NotificationChannelPush, *task.DueDate,
+	)
+	if err != nil {
+		log.Printf("Error checking push task_reminder for task %d: %v", task.ID, err)
+	} else if !exists {
+		payload := PushPayload{
+			Title: "Lembrete de tarefa",
+			Body:  fmt.Sprintf("%s vence em %d minutos", task.Title, minutesBefore),
+			URL:   fmt.Sprintf("/tasks/%d", task.ID),
+		}
+		if err := s.pushService.SendToUser(task.UserID, payload); err != nil {
+			log.Printf("Failed to send push task_reminder for task %d: %v", task.ID, err)
+		} else if s.recordTaskReminder(task, models.NotificationChannelPush, dueFP) {
+			sent++
+		}
+	}
+
+	if created, err := s.sendInAppTaskReminder(task, minutesBefore); err != nil {
+		log.Printf("Failed to create in-app task_reminder for task %d: %v", task.ID, err)
+	} else if created {
+		sent++
+	}
+
+	return sent
+}
+
+func (s *NotificationService) sendInAppTaskReminder(task *models.Task, minutesBefore int) (bool, error) {
+	exists, err := s.userNotificationRepo.ExistsTaskReminder(task.UserID, task.ID, *task.DueDate)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		return false, nil
+	}
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"task_id":        task.ID,
+		"title":          task.Title,
+		"due_date":       task.DueDate.UTC().Format(time.RFC3339),
+		"minutes_before": minutesBefore,
+	})
+	if err != nil {
+		return false, fmt.Errorf("marshal in-app payload: %w", err)
+	}
+
+	err = s.userNotificationRepo.Create(&models.UserNotification{
+		UserID:  task.UserID,
+		Type:    models.UserNotificationTypeTaskReminder,
+		Payload: string(payload),
+		Read:    false,
+	})
+	return err == nil, err
+}
+
+func (s *NotificationService) recordTaskReminder(task *models.Task, channel models.NotificationChannel, dueFP time.Time) bool {
+	notification := &models.Notification{
+		UserID:      task.UserID,
+		TaskID:      task.ID,
+		Type:        models.NotificationTypeTaskReminder,
+		Channel:     channel,
+		TaskDueDate: &dueFP,
+		SentAt:      time.Now().UTC(),
+	}
+	if err := s.notificationRepo.Create(notification); err != nil {
+		log.Printf("Failed to record %s task_reminder for task %d: %v", channel, task.ID, err)
+		return false
+	}
+	return true
 }

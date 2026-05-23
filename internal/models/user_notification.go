@@ -10,7 +10,8 @@ import (
 type UserNotificationType string
 
 const (
-	UserNotificationTypeGroupInvite UserNotificationType = "group_invite"
+	UserNotificationTypeGroupInvite  UserNotificationType = "group_invite"
+	UserNotificationTypeTaskReminder UserNotificationType = "task_reminder"
 )
 
 // UserNotification represents an in-app notification for a user.

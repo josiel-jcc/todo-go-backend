@@ -16,13 +16,9 @@ func StartScheduler(cfg *config.Config, notificationService *NotificationService
 
 	c := cron.New()
 
-	// Add notification check job
 	_, err := c.AddFunc(cfg.NotificationCheckInterval, func() {
-		log.Println("Running notification check...")
 		if err := notificationService.CheckAndSendNotifications(); err != nil {
-			log.Printf("Error checking notifications: %v", err)
-		} else {
-			log.Println("Notification check completed")
+			log.Printf("notification tick error: %v", err)
 		}
 	})
 

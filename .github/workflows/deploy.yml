@@ -48,13 +48,17 @@ jobs:
           CORS_ALLOW_CREDENTIALS=${{ secrets.CORS_ALLOW_CREDENTIALS || 'true' }}
           CORS_MAX_AGE=${{ secrets.CORS_MAX_AGE || '3600' }}
           NOTIFICATIONS_ENABLED=${{ secrets.NOTIFICATIONS_ENABLED || 'true' }}
-          NOTIFICATION_CHECK_INTERVAL=${{ secrets.NOTIFICATION_CHECK_INTERVAL || '0 * * * *' }}
+          NOTIFICATION_CHECK_INTERVAL=${{ secrets.NOTIFICATION_CHECK_INTERVAL || '* * * * *' }}
+          RUN_SCHEDULER=${{ secrets.RUN_SCHEDULER || 'true' }}
           SMTP_HOST=${{ secrets.SMTP_HOST }}
           SMTP_PORT=${{ secrets.SMTP_PORT || '587' }}
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
           SMTP_FROM=${{ secrets.SMTP_FROM }}
           TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT=${{ secrets.VAPID_SUBJECT }}
           CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
           EOF
 

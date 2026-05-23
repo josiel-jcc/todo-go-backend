@@ -43,8 +43,9 @@ type Task struct {
 	Description      string         `json:"description" gorm:"type:text"`
 	Type             TaskType       `json:"type" gorm:"type:varchar(20);not null"`
 	Priority         Priority       `json:"priority" gorm:"type:varchar(20);default:'media'"` // Task priority
-	DueDate          *time.Time     `json:"due_date"`                                         // Deadline for task completion
-	Completed        bool           `json:"completed" gorm:"default:false"`
+	DueDate               *time.Time `json:"due_date" gorm:"index:idx_tasks_reminder_candidates"` // Deadline for task completion
+	Completed             bool       `json:"completed" gorm:"default:false;index:idx_tasks_reminder_candidates"`
+	ReminderMinutesBefore *int       `json:"reminder_minutes_before,omitempty"` // NULL = inherit user default
 	UserID           uint           `json:"user_id" gorm:"not null;index"` // ID of the user responsible for the task (owner)
 	AssignedBy       *uint          `json:"assigned_by"`                   // ID of the user who created/assigned the task (nil if created by the user themselves)
 	User             User           `json:"user,omitempty" gorm:"foreignKey:UserID"`
