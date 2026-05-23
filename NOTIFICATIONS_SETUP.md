@@ -1,11 +1,12 @@
 # 📧 Configuração de Notificações
 
-Este guia explica como configurar as notificações por email e Telegram.
+Este guia explica como configurar lembretes de tarefas por email, Telegram e Web Push (PWA).
 
 ## 📋 Pré-requisitos
 
 1. **Email SMTP**: Conta de email com acesso SMTP (Gmail, Outlook, etc.)
 2. **Telegram Bot** (opcional): Bot do Telegram para notificações
+3. **Web Push VAPID** (opcional): Par de chaves VAPID para notificações no navegador
 
 ---
 
@@ -91,6 +92,66 @@ Authorization: Bearer <seu-token-jwt>
 
 ---
 
+## 🔔 Web Push (VAPID)
+
+### Gerar chaves VAPID
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Copie `publicKey` e `privateKey` para o `.env`:
+
+```env
+VAPID_PUBLIC_KEY=sua-chave-publica
+VAPID_PRIVATE_KEY=sua-chave-privada
+VAPID_SUBJECT=mailto:admin@example.com
+```
+
+- `VAPID_SUBJECT` deve ser um `mailto:` ou URL HTTPS de contato do aplicativo.
+- Em produção, a API deve ser servida via **HTTPS** (requisito do Web Push).
+
+### Fluxo de inscrição (subscribe)
+
+1. O frontend obtém a chave pública:
+   ```bash
+   GET /api/v1/notifications/push/vapid-public-key
+   Authorization: Bearer <token>
+   ```
+   Resposta: `{ "public_key": "..." }`
+
+2. O navegador solicita permissão e cria a subscription via `pushManager.subscribe()` usando a chave VAPID.
+
+3. O frontend envia a subscription ao backend:
+   ```bash
+   POST /api/v1/notifications/push/subscribe
+   Authorization: Bearer <token>
+   Content-Type: application/json
+
+   {
+     "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+     "keys": {
+       "p256dh": "...",
+       "auth": "..."
+     },
+     "user_agent": "Mozilla/5.0 ..." 
+   }
+   ```
+
+4. Para remover (logout ou desativar push no dispositivo):
+   ```bash
+   DELETE /api/v1/notifications/push/subscribe
+   Authorization: Bearer <token>
+
+   {
+     "endpoint": "https://fcm.googleapis.com/fcm/send/..."
+   }
+   ```
+
+Cada dispositivo/navegador gera um `endpoint` distinto; o backend armazena por usuário.
+
+---
+
 ## ⚙️ Configuração Geral
 
 ### Variáveis de Ambiente
@@ -102,12 +163,12 @@ Adicione ao seu `.env`:
 NOTIFICATIONS_ENABLED=true
 
 # Intervalo de verificação (formato cron)
-# Exemplos:
-# "0 * * * *"     - A cada hora
-# "0 */6 * * *"   - A cada 6 horas
-# "0 9 * * *"     - Diariamente às 9h
-# "*/15 * * * *"  - A cada 15 minutos
-NOTIFICATION_CHECK_INTERVAL=0 * * * *
+# Produção: a cada minuto
+NOTIFICATION_CHECK_INTERVAL=* * * * *
+
+# Executar o scheduler neste processo (default: true)
+# Em múltiplas réplicas da API, defina false nas réplicas extras
+RUN_SCHEDULER=true
 
 # Email SMTP
 SMTP_HOST=smtp.gmail.com
@@ -118,17 +179,36 @@ SMTP_FROM=noreply@todoapp.com
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=seu-token-do-botfather
+
+# Web Push VAPID
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@example.com
 ```
 
 ---
 
 ## 🔔 Tipos de Notificações
 
-O sistema envia automaticamente:
+O sistema envia **lembretes com horário** (`task_reminder`):
 
-1. **Due Soon** (1 dia antes): Notificação quando a tarefa vence amanhã
-2. **Due Today**: Notificação quando a tarefa vence hoje
-3. **Overdue**: Notificação diária para tarefas atrasadas
+- Um lembrete por tarefa e canal quando `reminder_at = due_date - offset` cai na janela do scheduler (último minuto).
+- `offset` efetivo = `task.reminder_minutes_before` (se definido) ou `user.reminder_minutes_before` (padrão: **10** minutos).
+- Valores permitidos: **5, 10, 15, 30, 60** minutos antes do vencimento.
+- Canais: email, Telegram (se configurado), Web Push (se inscrito), e sino in-app (`UserNotification` tipo `task_reminder`).
+
+Os tipos legados `due_soon`, `due_today` e `overdue` **não são mais gerados**.
+
+### Escala (≤ 5 000 tarefas ativas)
+
+O scheduler **não varre a tabela inteira**. A cada tick, uma consulta indexada retorna apenas tarefas com:
+
+- `completed = false`
+- `due_date` não nulo
+- `users.notifications_enabled = true`
+- `due_date` na janela `[now + 4 min, now + 61 min]` (cobre offsets 5–60 min)
+
+O envio em si filtra `reminder_at` na janela `[now - 1 min, now)`. Projetado para até **5 000** tarefas ativas com `due_date`; fora dessa faixa horária, a carga por tick permanece baixa.
 
 ---
 
@@ -144,6 +224,19 @@ Authorization: Bearer <token>
   "notifications_enabled": true
 }
 ```
+
+### Lembrete padrão (minutos antes do vencimento)
+
+```bash
+PUT /api/v1/users/reminder-settings
+Authorization: Bearer <token>
+
+{
+  "reminder_minutes_before": 10
+}
+```
+
+Valores: `5`, `10`, `15`, `30` ou `60`.
 
 ### Configurar Telegram Chat ID
 
@@ -163,15 +256,20 @@ Para remover o Telegram:
 }
 ```
 
+### Override por tarefa
+
+Ao criar ou editar uma tarefa, envie `reminder_minutes_before` (opcional). Se omitido, usa o padrão do usuário; `null` na edição remove o override.
+
 ---
 
 ## 🧪 Testando
 
 ### Teste Manual
 
-1. Crie uma tarefa com `due_date` = hoje
-2. Aguarde o próximo ciclo do scheduler (ou ajuste o intervalo)
-3. Verifique seu email e Telegram
+1. Configure `NOTIFICATION_CHECK_INTERVAL=* * * * *` (a cada minuto)
+2. Defina `reminder_minutes_before` (ex.: 5) e crie uma tarefa com `due_date` ≈ agora + 5 minutos
+3. Aguarde o próximo tick do scheduler
+4. Verifique email, Telegram, push e o sino in-app
 
 ### Verificar Logs
 
@@ -198,19 +296,26 @@ Notification check completed
 - Envie uma mensagem para o bot antes de configurar o Chat ID
 - Verifique os logs do servidor para erros
 
+### Web Push não funciona
+
+- Confirme `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT`
+- API e PWA devem estar em HTTPS em produção
+- O usuário deve ter chamado `POST /notifications/push/subscribe` após conceder permissão
+- Subscriptions expiradas (410) são removidas automaticamente pelo servidor
+
 ### Notificações não estão sendo enviadas
 
 - Verifique se `NOTIFICATIONS_ENABLED=true`
+- Verifique se `RUN_SCHEDULER=true` neste processo (em deploy com várias réplicas, apenas uma deve rodar o scheduler)
 - Verifique se o usuário tem `notifications_enabled=true`
-- Verifique se a tarefa tem `due_date` configurado
-- Verifique se a tarefa não está `completed=true`
+- Verifique se a tarefa tem `due_date` configurado e `completed=false`
+- Confirme que `reminder_at` ainda está na janela (lembretes atrasados > 1 minuto não são reenviados)
 
 ---
 
 ## 📝 Notas
 
-- Notificações são enviadas apenas uma vez por dia para cada tipo
-- Tarefas completadas não recebem notificações
+- Deduplicação por `(task_id, channel, due_date)` — alterar `due_date` permite novo lembrete
+- Tarefas completadas não entram na consulta de candidatos
 - O scheduler roda em background e não bloqueia a API
-- Histórico de notificações é salvo no banco de dados
-
+- Histórico de notificações é salvo no banco de dados (`notifications` e `user_notifications`)

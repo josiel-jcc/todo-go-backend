@@ -60,13 +60,15 @@ func main() {
 	groupRepo := repositories.NewGroupRepository()
 	groupInvitationRepo := repositories.NewGroupInvitationRepository()
 	userNotificationRepo := repositories.NewUserNotificationRepository()
+	pushSubscriptionRepo := repositories.NewPushSubscriptionRepository()
 
 	groupService := services.NewGroupService(groupRepo, groupInvitationRepo, userNotificationRepo, userRepo)
 	userNotificationService := services.NewUserNotificationService(userNotificationRepo)
 
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret, groupService)
 	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
-	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService)
+	notificationRepo := repositories.NewNotificationRepository()
+	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo)
 	tagService := services.NewTagService(tagRepo)
 	commentService := services.NewCommentService(commentRepo, taskRepo)
 
@@ -78,11 +80,13 @@ func main() {
 		cfg.SMTPFrom,
 	)
 	telegramService := notifications.NewTelegramService(cfg.TelegramBotToken)
-	notificationRepo := repositories.NewNotificationRepository()
+	pushService := notifications.NewPushService(cfg, pushSubscriptionRepo)
 	notificationService := notifications.NewNotificationService(
 		emailService,
 		telegramService,
+		pushService,
 		notificationRepo,
+		userNotificationRepo,
 		taskRepo,
 		userRepo,
 	)
@@ -95,8 +99,11 @@ func main() {
 	groupHandler := handlers.NewGroupHandler(groupService)
 	groupInvitationHandler := handlers.NewGroupInvitationHandler(groupService)
 	userNotificationHandler := handlers.NewUserNotificationHandler(userNotificationService)
+	pushNotificationHandler := handlers.NewPushNotificationHandler(pushService, pushSubscriptionRepo)
 
-	go notifications.StartScheduler(cfg, notificationService)
+	if cfg.RunScheduler {
+		go notifications.StartScheduler(cfg, notificationService)
+	}
 
 	router := gin.Default()
 	router.Use(middleware.SecurityHeadersMiddleware(cfg))
@@ -150,6 +157,11 @@ func main() {
 		protected.GET("/users", userHandler.GetUsers)
 		protected.PUT("/users/telegram-chat-id", userHandler.UpdateTelegramChatID)
 		protected.PUT("/users/notifications-enabled", userHandler.UpdateNotificationsEnabled)
+		protected.PUT("/users/reminder-settings", userHandler.UpdateReminderSettings)
+
+		protected.GET("/notifications/push/vapid-public-key", pushNotificationHandler.GetVAPIDPublicKey)
+		protected.POST("/notifications/push/subscribe", pushNotificationHandler.Subscribe)
+		protected.DELETE("/notifications/push/subscribe", pushNotificationHandler.Unsubscribe)
 
 		protected.GET("/groups", groupHandler.ListGroups)
 		protected.POST("/groups", groupHandler.CreateGroup)

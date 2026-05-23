@@ -2,12 +2,14 @@ package repositories
 
 import (
 	"fmt"
+	"time"
 	"todo-go-backend/internal/database"
 	"todo-go-backend/internal/models"
 )
 
 type UserNotificationRepository interface {
 	Create(n *models.UserNotification) error
+	ExistsTaskReminder(userID, taskID uint, dueDate time.Time) (bool, error)
 	FindByID(id uint) (*models.UserNotification, error)
 	ListByUserID(userID uint, unreadOnly bool, page, limit int) ([]models.UserNotification, int64, error)
 	CountUnread(userID uint) (int64, error)
@@ -25,6 +27,22 @@ func NewUserNotificationRepository() UserNotificationRepository {
 
 func (r *userNotificationRepository) Create(n *models.UserNotification) error {
 	return database.DB.Create(n).Error
+}
+
+// ExistsTaskReminder reports whether an in-app task_reminder already exists for the due_date snapshot.
+func (r *userNotificationRepository) ExistsTaskReminder(userID, taskID uint, dueDate time.Time) (bool, error) {
+	dueStr := dueDate.UTC().Format(time.RFC3339)
+	var count int64
+	err := database.DB.Model(&models.UserNotification{}).
+		Where("user_id = ? AND type = ?", userID, models.UserNotificationTypeTaskReminder).
+		Where("payload LIKE ? AND payload LIKE ?",
+			fmt.Sprintf(`%%"task_id":%d%%`, taskID),
+			fmt.Sprintf(`%%"due_date":"%s"%%`, dueStr)).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *userNotificationRepository) FindByID(id uint) (*models.UserNotification, error) {

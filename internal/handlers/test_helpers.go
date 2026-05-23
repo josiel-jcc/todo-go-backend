@@ -9,6 +9,7 @@ import (
 	"todo-go-backend/internal/database"
 	"todo-go-backend/internal/middleware"
 	"todo-go-backend/internal/models"
+	"todo-go-backend/internal/notifications"
 	"todo-go-backend/internal/repositories"
 	"todo-go-backend/internal/services"
 
@@ -52,6 +53,7 @@ func migrateTestSchema(db *gorm.DB) error {
 		&models.Tag{},
 		&models.Comment{},
 		&models.Notification{},
+		&models.PushSubscription{},
 		&models.TokenDenylist{},
 		&models.Group{},
 		&models.GroupMember{},
@@ -68,6 +70,7 @@ func truncateTestData(db *gorm.DB, useMySQL bool) {
 		db.Exec("TRUNCATE TABLE group_members")
 		db.Exec("TRUNCATE TABLE `groups`")
 		db.Exec("TRUNCATE TABLE task_shared_with")
+		db.Exec("TRUNCATE TABLE push_subscriptions")
 		db.Exec("TRUNCATE TABLE notifications")
 		db.Exec("TRUNCATE TABLE comments")
 		db.Exec("TRUNCATE TABLE task_tags")
@@ -82,6 +85,7 @@ func truncateTestData(db *gorm.DB, useMySQL bool) {
 	db.Exec("DELETE FROM group_members")
 	db.Exec("DELETE FROM groups")
 	db.Exec("DELETE FROM task_shared_with")
+	db.Exec("DELETE FROM push_subscriptions")
 	db.Exec("DELETE FROM notifications")
 	db.Exec("DELETE FROM comments")
 	db.Exec("DELETE FROM task_tags")
@@ -148,25 +152,29 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	groupRepo := repositories.NewGroupRepository()
 	groupInvitationRepo := repositories.NewGroupInvitationRepository()
 	userNotificationRepo := repositories.NewUserNotificationRepository()
+	pushSubscriptionRepo := repositories.NewPushSubscriptionRepository()
 
 	groupService := services.NewGroupService(groupRepo, groupInvitationRepo, userNotificationRepo, userRepo)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, jwtSecret, groupService)
 	tagRepo := repositories.NewTagRepository()
-	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService)
+	notificationRepo := repositories.NewNotificationRepository()
+	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo)
 
 	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
 	userNotificationService := services.NewUserNotificationService(userNotificationRepo)
 
 	// Initialize handlers
-	cfg := &config.Config{AppEnv: "development", JWTSecret: jwtSecret}
+	cfg := &config.Config{AppEnv: "development", JWTSecret: jwtSecret, VAPIDPublicKey: "test-vapid-public-key"}
+	pushService := notifications.NewPushService(cfg, pushSubscriptionRepo)
 	authHandler := NewAuthHandler(authService, cfg)
 	taskHandler := NewTaskHandler(taskService)
 	userHandler := NewUserHandler(nil, userRepo, userService, groupService)
 	groupHandler := NewGroupHandler(groupService)
 	groupInvitationHandler := NewGroupInvitationHandler(groupService)
 	userNotificationHandler := NewUserNotificationHandler(userNotificationService)
+	pushNotificationHandler := NewPushNotificationHandler(pushService, pushSubscriptionRepo)
 
 	// Public routes
 	api := router.Group("/api/v1")
@@ -188,6 +196,11 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 		protected.POST("/tasks/:id/share", taskHandler.ShareTask)
 
 		protected.GET("/users", userHandler.GetUsers)
+		protected.PUT("/users/reminder-settings", userHandler.UpdateReminderSettings)
+
+		protected.GET("/notifications/push/vapid-public-key", pushNotificationHandler.GetVAPIDPublicKey)
+		protected.POST("/notifications/push/subscribe", pushNotificationHandler.Subscribe)
+		protected.DELETE("/notifications/push/subscribe", pushNotificationHandler.Unsubscribe)
 
 		protected.GET("/groups", groupHandler.ListGroups)
 		protected.POST("/groups", groupHandler.CreateGroup)

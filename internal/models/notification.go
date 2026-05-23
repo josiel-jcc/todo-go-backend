@@ -16,6 +16,8 @@ const (
 	NotificationTypeDueToday NotificationType = "due_today"
 	// NotificationTypeOverdue represents notification for overdue tasks
 	NotificationTypeOverdue NotificationType = "overdue"
+	// NotificationTypeTaskReminder represents a timed reminder before task due_date
+	NotificationTypeTaskReminder NotificationType = "task_reminder"
 )
 
 // NotificationChannel represents the channel used to send notification
@@ -26,6 +28,8 @@ const (
 	NotificationChannelEmail NotificationChannel = "email"
 	// NotificationChannelTelegram represents Telegram channel
 	NotificationChannelTelegram NotificationChannel = "telegram"
+	// NotificationChannelPush represents Web Push channel
+	NotificationChannelPush NotificationChannel = "push"
 )
 
 // Notification represents a sent notification
@@ -34,8 +38,9 @@ type Notification struct {
 	UserID    uint                 `json:"user_id" gorm:"not null;index"`
 	TaskID    uint                 `json:"task_id" gorm:"not null;index"`
 	Type      NotificationType     `json:"type" gorm:"type:varchar(20);not null"`
-	Channel   NotificationChannel  `json:"channel" gorm:"type:varchar(20);not null"`
-	SentAt    time.Time            `json:"sent_at"`
+	Channel     NotificationChannel  `json:"channel" gorm:"type:varchar(20);not null"`
+	TaskDueDate *time.Time           `json:"task_due_date,omitempty"` // UTC due_date at send time (dedup fingerprint)
+	SentAt      time.Time            `json:"sent_at"`
 	User      User                 `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Task      Task                 `json:"task,omitempty" gorm:"foreignKey:TaskID"`
 	CreatedAt time.Time            `json:"created_at"`

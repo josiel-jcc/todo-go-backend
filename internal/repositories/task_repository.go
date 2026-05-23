@@ -18,6 +18,7 @@ type TaskRepository interface {
 	AddSharedWith(taskID, userID uint) error
 	RemoveSharedWith(taskID, userID uint) error
 	UserCanAccessTask(taskID, userID uint) (bool, error)
+	FindReminderCandidates(now time.Time) ([]models.Task, error)
 }
 
 // TaskFilters defines filters for task search
@@ -272,5 +273,27 @@ func (r *taskRepository) Exists(id uint) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// FindReminderCandidates returns incomplete tasks with due_date in the scheduler window
+// for users who have notifications enabled.
+func (r *taskRepository) FindReminderCandidates(now time.Time) ([]models.Task, error) {
+	nowUTC := now.UTC()
+	windowStart := nowUTC.Add(4 * time.Minute)
+	windowEnd := nowUTC.Add(61 * time.Minute)
+
+	var tasks []models.Task
+	err := database.DB.
+		Joins("JOIN users ON users.id = tasks.user_id").
+		Where("tasks.completed = ?", false).
+		Where("tasks.due_date IS NOT NULL").
+		Where("users.notifications_enabled = ?", true).
+		Where("tasks.due_date >= ? AND tasks.due_date <= ?", windowStart, windowEnd).
+		Preload("User").
+		Find(&tasks).Error
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
 }
 

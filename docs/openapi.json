@@ -76,6 +76,18 @@
 						"example": "alta",
 						"type": "string"
 					},
+					"reminder_minutes_before": {
+						"description": "Optional: minutes before due_date (5, 10, 15, 30, 60); omit to use user default",
+						"enum": [
+							5,
+							10,
+							15,
+							30,
+							60
+						],
+						"example": 10,
+						"type": "integer"
+					},
 					"tag_ids": {
 						"description": "Optional: IDs of tags to associate",
 						"items": {
@@ -489,6 +501,18 @@
 						"example": "urgente",
 						"type": "string"
 					},
+					"reminder_minutes_before": {
+						"description": "Optional: 5, 10, 15, 30, 60; null clears per-task override",
+						"enum": [
+							5,
+							10,
+							15,
+							30,
+							60
+						],
+						"example": 15,
+						"type": "integer"
+					},
 					"tag_ids": {
 						"description": "Optional: nil = no change, [] = remove all, [1,2] = set tags",
 						"items": {
@@ -536,6 +560,82 @@
 				},
 				"required": [
 					"telegram_chat_id"
+				],
+				"type": "object"
+			},
+			"handlers.UpdateReminderSettingsRequest": {
+				"properties": {
+					"reminder_minutes_before": {
+						"description": "Default minutes before due_date to send task reminders",
+						"enum": [
+							5,
+							10,
+							15,
+							30,
+							60
+						],
+						"example": 10,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"reminder_minutes_before"
+				],
+				"type": "object"
+			},
+			"handlers.VAPIDPublicKeyResponse": {
+				"properties": {
+					"public_key": {
+						"example": "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQaIQhZf9htdY",
+						"type": "string"
+					}
+				},
+				"required": [
+					"public_key"
+				],
+				"type": "object"
+			},
+			"handlers.PushSubscribeKeys": {
+				"properties": {
+					"auth": {
+						"type": "string"
+					},
+					"p256dh": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"auth",
+					"p256dh"
+				],
+				"type": "object"
+			},
+			"handlers.PushSubscribeRequest": {
+				"properties": {
+					"endpoint": {
+						"type": "string"
+					},
+					"keys": {
+						"$ref": "#/components/schemas/handlers.PushSubscribeKeys"
+					},
+					"user_agent": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"endpoint",
+					"keys"
+				],
+				"type": "object"
+			},
+			"handlers.PushUnsubscribeRequest": {
+				"properties": {
+					"endpoint": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"endpoint"
 				],
 				"type": "object"
 			},
@@ -788,6 +888,10 @@
 						],
 						"description": "Task priority"
 					},
+					"reminder_minutes_before": {
+						"description": "Minutes before due_date for reminder; null inherits user default",
+						"type": "integer"
+					},
 					"shared_with": {
 						"description": "Users with whom the task is shared (no limit)",
 						"items": {
@@ -869,6 +973,11 @@
 						"description": "Opt-in notifications",
 						"type": "boolean"
 					},
+					"reminder_minutes_before": {
+						"description": "Default minutes before due_date to send task reminders (5, 10, 15, 30, or 60)",
+						"example": 10,
+						"type": "integer"
+					},
 					"telegram_chat_id": {
 						"description": "Telegram chat ID for notifications",
 						"type": "string"
@@ -888,6 +997,7 @@
 					"email",
 					"id",
 					"notifications_enabled",
+					"reminder_minutes_before",
 					"telegram_chat_id",
 					"terms_accepted_at",
 					"updated_at",
@@ -932,11 +1042,13 @@
 			},
 			"models.UserNotificationType": {
 				"enum": [
-					"group_invite"
+					"group_invite",
+					"task_reminder"
 				],
 				"type": "string",
 				"x-enum-varnames": [
-					"UserNotificationTypeGroupInvite"
+					"UserNotificationTypeGroupInvite",
+					"UserNotificationTypeTaskReminder"
 				]
 			},
 			"models.UserPublic": {
@@ -4037,6 +4149,254 @@
 				"summary": "Update Telegram chat ID",
 				"tags": [
 					"users"
+				]
+			}
+		},
+		"/users/reminder-settings": {
+			"put": {
+				"description": "Sets the default minutes before due_date to send task reminders (5, 10, 15, 30, or 60)",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/handlers.UpdateReminderSettingsRequest"
+							}
+						}
+					},
+					"description": "Reminder settings",
+					"required": true,
+					"x-originalParamName": "request"
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/models.User"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Not Found"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Update reminder settings",
+				"tags": [
+					"users"
+				]
+			}
+		},
+		"/notifications/push/vapid-public-key": {
+			"get": {
+				"description": "Returns the VAPID public key used by the browser to subscribe to Web Push",
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.VAPIDPublicKeyResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Get VAPID public key",
+				"tags": [
+					"notifications"
+				]
+			}
+		},
+		"/notifications/push/subscribe": {
+			"post": {
+				"description": "Stores or updates a Web Push subscription for the current device",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/handlers.PushSubscribeRequest"
+							}
+						}
+					},
+					"description": "Push subscription",
+					"required": true,
+					"x-originalParamName": "request"
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Subscribe to Web Push",
+				"tags": [
+					"notifications"
+				]
+			},
+			"delete": {
+				"description": "Removes a Web Push subscription by endpoint for the current user",
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/handlers.PushUnsubscribeRequest"
+							}
+						}
+					},
+					"description": "Endpoint to remove",
+					"required": true,
+					"x-originalParamName": "request"
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.SuccessResponse"
+								}
+							}
+						},
+						"description": "OK"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Bad Request"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Unauthorized"
+					},
+					"500": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/handlers.ErrorResponse"
+								}
+							}
+						},
+						"description": "Internal Server Error"
+					}
+				},
+				"security": [
+					{
+						"BearerAuth": []
+					}
+				],
+				"summary": "Unsubscribe from Web Push",
+				"tags": [
+					"notifications"
 				]
 			}
 		}

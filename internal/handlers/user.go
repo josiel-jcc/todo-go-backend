@@ -13,6 +13,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UpdateReminderSettingsRequest updates the user's default reminder offset.
+type UpdateReminderSettingsRequest struct {
+	ReminderMinutesBefore int `json:"reminder_minutes_before" binding:"required" example:"10"`
+}
+
 // UserHandler manages user handlers
 type UserHandler struct {
 	notificationService *notifications.NotificationService
@@ -160,6 +165,49 @@ func (h *UserHandler) UpdateNotificationsEnabled(c *gin.Context) {
 	}
 
 	handleSuccess(c, http.StatusOK, message, nil)
+}
+
+// UpdateReminderSettings updates the user's default reminder minutes before due date.
+// @Summary      Update reminder settings
+// @Description  Sets the default minutes before due_date to send task reminders (5, 10, 15, 30, or 60)
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body      UpdateReminderSettingsRequest  true  "Reminder settings"
+// @Success      200      {object}  models.User
+// @Failure      400      {object}  ErrorResponse
+// @Failure      401      {object}  ErrorResponse
+// @Failure      404      {object}  ErrorResponse
+// @Failure      500      {object}  ErrorResponse
+// @Router       /users/reminder-settings [put]
+func (h *UserHandler) UpdateReminderSettings(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	var req UpdateReminderSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		handleValidationError(c, err)
+		return
+	}
+
+	if !services.IsValidReminderMinutes(req.ReminderMinutesBefore) {
+		handleError(c, errors.NewInvalidInputError("reminder_minutes_before must be one of: 5, 10, 15, 30, 60"))
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		handleError(c, errors.NewUserNotFoundError())
+		return
+	}
+
+	user.ReminderMinutesBefore = req.ReminderMinutesBefore
+	if err := database.DB.Save(&user).Error; err != nil {
+		handleError(c, errors.NewInternalServerError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
 }
 
 // TestNotifications manually triggers notification check (for testing)
