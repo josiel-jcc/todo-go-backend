@@ -26,6 +26,7 @@ func NewUserNotificationHandler(notificationService services.UserNotificationSer
 // @Param        page         query     int   false  "Page number (default: 1)"
 // @Param        limit        query     int   false  "Items per page (default: 20, max: 100)"
 // @Param        unread_only  query     bool  false  "Only unread notifications"
+// @Param        active_only  query     bool  false  "Unread or read within the last 24 hours"
 // @Success      200          {object}  PaginatedInAppNotificationsResponse
 // @Failure      401          {object}  ErrorResponse
 // @Failure      500          {object}  ErrorResponse
@@ -34,8 +35,9 @@ func (h *UserNotificationHandler) List(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	page, limit := parsePagination(c)
 	unreadOnly := c.Query("unread_only") == "true"
+	activeOnly := c.Query("active_only") == "true"
 
-	list, total, err := h.notificationService.List(userID, unreadOnly, page, limit)
+	list, total, err := h.notificationService.List(userID, unreadOnly, activeOnly, page, limit)
 	if err != nil {
 		handleError(c, err)
 		return

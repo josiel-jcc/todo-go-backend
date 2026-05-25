@@ -867,6 +867,10 @@
 					"completed": {
 						"type": "boolean"
 					},
+					"completed_at": {
+						"description": "When the task was marked completed",
+						"type": "string"
+					},
 					"created_at": {
 						"type": "string"
 					},
@@ -1018,6 +1022,10 @@
 					},
 					"read": {
 						"type": "boolean"
+					},
+					"read_at": {
+						"description": "When the notification was marked read",
+						"type": "string"
 					},
 					"type": {
 						"$ref": "#/components/schemas/models.UserNotificationType"
@@ -2342,6 +2350,14 @@
 						"schema": {
 							"type": "boolean"
 						}
+					},
+					{
+						"description": "Unread or read within the last 24 hours",
+						"in": "query",
+						"name": "active_only",
+						"schema": {
+							"type": "boolean"
+						}
 					}
 				],
 				"responses": {
@@ -2971,6 +2987,14 @@
 						}
 					},
 					{
+						"description": "Hide tasks completed more than 24 hours ago",
+						"in": "query",
+						"name": "hide_stale_completed",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
 						"description": "Search in title and description",
 						"in": "query",
 						"name": "search",
@@ -3204,6 +3228,14 @@
 						"description": "Filter by completion status",
 						"in": "query",
 						"name": "completed",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"description": "Hide tasks completed more than 24 hours ago",
+						"in": "query",
+						"name": "hide_stale_completed",
 						"schema": {
 							"type": "boolean"
 						}

@@ -64,3 +64,34 @@ func TestFindReminderCandidates_filtersWindowAndNotifications(t *testing.T) {
 	assert.Equal(t, "in window", candidates[0].Title)
 	assert.True(t, candidates[0].User.NotificationsEnabled)
 }
+
+func TestFindByUserID_hideStaleCompleted(t *testing.T) {
+	setupTaskRepoTestDB(t)
+	repo := NewTaskRepository()
+
+	user := &models.User{Username: "u1", Email: "u1@test.com", Password: "hash"}
+	require.NoError(t, database.DB.Create(user).Error)
+
+	now := time.Now()
+	staleCompletedAt := now.Add(-48 * time.Hour)
+	recentCompletedAt := now.Add(-1 * time.Hour)
+
+	tasks := []models.Task{
+		{Title: "open", UserID: user.ID, Completed: false},
+		{Title: "recent done", UserID: user.ID, Completed: true, CompletedAt: &recentCompletedAt},
+		{Title: "stale done", UserID: user.ID, Completed: true, CompletedAt: &staleCompletedAt},
+	}
+	for i := range tasks {
+		require.NoError(t, database.DB.Create(&tasks[i]).Error)
+	}
+
+	hideStale := true
+	found, total, err := repo.FindByUserID(user.ID, &TaskFilters{HideStaleCompleted: hideStale, Limit: 100})
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	assert.Len(t, found, 2)
+
+	titles := []string{found[0].Title, found[1].Title}
+	assert.Contains(t, titles, "open")
+	assert.Contains(t, titles, "recent done")
+}
