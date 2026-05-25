@@ -68,5 +68,15 @@ func Connect(cfg *config.Config) error {
 		return err
 	}
 
+	if err := migrations.BackfillReadAt(DB); err != nil {
+		log.Printf("Warning: read_at backfill failed: %v", err)
+		return err
+	}
+
+	if err := migrations.BackfillCompletedAt(DB); err != nil {
+		log.Printf("Warning: completed_at backfill failed: %v", err)
+		return err
+	}
+
 	return nil
 }

@@ -11,13 +11,16 @@ type UserNotificationRepository interface {
 	Create(n *models.UserNotification) error
 	ExistsTaskReminder(userID, taskID uint, dueDate time.Time) (bool, error)
 	FindByID(id uint) (*models.UserNotification, error)
-	ListByUserID(userID uint, unreadOnly bool, page, limit int) ([]models.UserNotification, int64, error)
+	ListByUserID(userID uint, unreadOnly, activeOnly bool, page, limit int) ([]models.UserNotification, int64, error)
 	CountUnread(userID uint) (int64, error)
 	MarkRead(id, userID uint) error
 	MarkAllRead(userID uint) error
 	MarkReadByInvitationID(userID uint, invitationID uint) error
+	DeleteStaleRead(before time.Time) error
 	DeleteByUserID(userID uint) error
 }
+
+const staleNotificationAge = 24 * time.Hour
 
 type userNotificationRepository struct{}
 
@@ -53,9 +56,12 @@ func (r *userNotificationRepository) FindByID(id uint) (*models.UserNotification
 	return &n, nil
 }
 
-func (r *userNotificationRepository) ListByUserID(userID uint, unreadOnly bool, page, limit int) ([]models.UserNotification, int64, error) {
+func (r *userNotificationRepository) ListByUserID(userID uint, unreadOnly, activeOnly bool, page, limit int) ([]models.UserNotification, int64, error) {
 	query := database.DB.Model(&models.UserNotification{}).Where("user_id = ?", userID)
-	if unreadOnly {
+	if activeOnly {
+		cutoff := time.Now().Add(-staleNotificationAge)
+		query = query.Where("`read` = ? OR read_at >= ?", false, cutoff)
+	} else if unreadOnly {
 		query = query.Where("`read` = ?", false)
 	}
 	var total int64
@@ -77,23 +83,32 @@ func (r *userNotificationRepository) CountUnread(userID uint) (int64, error) {
 }
 
 func (r *userNotificationRepository) MarkRead(id, userID uint) error {
+	now := time.Now()
 	return database.DB.Model(&models.UserNotification{}).
-		Where("id = ? AND user_id = ?", id, userID).
-		Update("`read`", true).Error
+		Where("id = ? AND user_id = ? AND `read` = ?", id, userID, false).
+		Updates(map[string]interface{}{"read": true, "read_at": now}).Error
 }
 
 func (r *userNotificationRepository) MarkAllRead(userID uint) error {
+	now := time.Now()
 	return database.DB.Model(&models.UserNotification{}).
-		Where("user_id = ?", userID).
-		Update("`read`", true).Error
+		Where("user_id = ? AND `read` = ?", userID, false).
+		Updates(map[string]interface{}{"read": true, "read_at": now}).Error
 }
 
 func (r *userNotificationRepository) MarkReadByInvitationID(userID uint, invitationID uint) error {
+	now := time.Now()
 	pattern := fmt.Sprintf("%%\"invitation_id\":%d%%", invitationID)
 	return database.DB.Model(&models.UserNotification{}).
 		Where("user_id = ? AND type = ? AND `read` = ? AND payload LIKE ?",
 			userID, models.UserNotificationTypeGroupInvite, false, pattern).
-		Update("`read`", true).Error
+		Updates(map[string]interface{}{"read": true, "read_at": now}).Error
+}
+
+func (r *userNotificationRepository) DeleteStaleRead(before time.Time) error {
+	return database.DB.
+		Where("`read` = ? AND read_at IS NOT NULL AND read_at < ?", true, before).
+		Delete(&models.UserNotification{}).Error
 }
 
 func (r *userNotificationRepository) DeleteByUserID(userID uint) error {

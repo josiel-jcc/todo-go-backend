@@ -20,6 +20,9 @@ func StartScheduler(cfg *config.Config, notificationService *NotificationService
 		if err := notificationService.CheckAndSendNotifications(); err != nil {
 			log.Printf("notification tick error: %v", err)
 		}
+		if err := notificationService.PurgeStaleInAppNotifications(); err != nil {
+			log.Printf("in-app notification purge error: %v", err)
+		}
 	})
 
 	if err != nil {

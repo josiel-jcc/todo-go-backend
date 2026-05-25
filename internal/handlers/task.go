@@ -172,6 +172,10 @@ func (h *TaskHandler) GetTasks(c *gin.Context) {
 		filters.Completed = &completedBool
 	}
 
+	if c.Query("hide_stale_completed") == "true" {
+		filters.HideStaleCompleted = true
+	}
+
 	if search := c.Query("search"); search != "" {
 		filters.Search = &search
 	}
@@ -331,6 +335,10 @@ func (h *TaskHandler) GetAssignedTasks(c *gin.Context) {
 		if completed, err := strconv.ParseBool(completedStr); err == nil {
 			filters.Completed = &completed
 		}
+	}
+
+	if c.Query("hide_stale_completed") == "true" {
+		filters.HideStaleCompleted = true
 	}
 
 	if search := c.Query("search"); search != "" {

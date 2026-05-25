@@ -45,9 +45,10 @@ type UpdateTaskRequest struct {
 
 // TaskFilters defines filters for task search
 type TaskFilters struct {
-	Type        *models.TaskType
-	Completed   *bool
-	Priority    *models.Priority
+	Type               *models.TaskType
+	Completed          *bool
+	HideStaleCompleted bool
+	Priority           *models.Priority
 	Search      *string
 	DueDateFrom *time.Time
 	DueDateTo   *time.Time
@@ -227,6 +228,7 @@ func (s *taskService) GetByUserID(userID uint, filters *TaskFilters) (*Paginated
 			repoFilters.Priority = filters.Priority
 		}
 		repoFilters.Completed = filters.Completed
+		repoFilters.HideStaleCompleted = filters.HideStaleCompleted
 		repoFilters.Search = filters.Search
 		repoFilters.DueDateFrom = filters.DueDateFrom
 		repoFilters.DueDateTo = filters.DueDateTo
@@ -293,6 +295,7 @@ func (s *taskService) GetAssignedByUser(assignedByID uint, filters *TaskFilters)
 			repoFilters.Priority = filters.Priority
 		}
 		repoFilters.Completed = filters.Completed
+		repoFilters.HideStaleCompleted = filters.HideStaleCompleted
 		repoFilters.Search = filters.Search
 		repoFilters.DueDateFrom = filters.DueDateFrom
 		repoFilters.DueDateTo = filters.DueDateTo
@@ -368,6 +371,12 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 		task.ReminderMinutesBefore = req.ReminderMinutesBefore
 	}
 	if req.Completed != nil {
+		if *req.Completed && !task.Completed {
+			now := time.Now()
+			task.CompletedAt = &now
+		} else if !*req.Completed {
+			task.CompletedAt = nil
+		}
 		task.Completed = *req.Completed
 	}
 
