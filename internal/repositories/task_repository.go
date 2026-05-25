@@ -21,11 +21,14 @@ type TaskRepository interface {
 	FindReminderCandidates(now time.Time) ([]models.Task, error)
 }
 
+const staleCompletedAge = 24 * time.Hour
+
 // TaskFilters defines filters for task search
 type TaskFilters struct {
-	Type         *models.TaskType
-	Completed    *bool
-	Priority     *models.Priority
+	Type                *models.TaskType
+	Completed           *bool
+	HideStaleCompleted  bool
+	Priority            *models.Priority
 	Search       *string // Search in title and description
 	DueDateFrom  *time.Time
 	DueDateTo    *time.Time
@@ -76,6 +79,10 @@ func (r *taskRepository) FindByUserID(userID uint, filters *TaskFilters) ([]mode
 		}
 		if filters.Completed != nil {
 			query = query.Where("completed = ?", *filters.Completed)
+		}
+		if filters.HideStaleCompleted {
+			cutoff := time.Now().Add(-staleCompletedAge)
+			query = query.Where("completed = ? OR completed_at IS NULL OR completed_at >= ?", false, cutoff)
 		}
 		if filters.Priority != nil {
 			query = query.Where("priority = ?", *filters.Priority)
@@ -163,6 +170,10 @@ func (r *taskRepository) FindByAssignedBy(assignedByID uint, filters *TaskFilter
 		}
 		if filters.Completed != nil {
 			query = query.Where("completed = ?", *filters.Completed)
+		}
+		if filters.HideStaleCompleted {
+			cutoff := time.Now().Add(-staleCompletedAge)
+			query = query.Where("completed = ? OR completed_at IS NULL OR completed_at >= ?", false, cutoff)
 		}
 		if filters.Priority != nil {
 			query = query.Where("priority = ?", *filters.Priority)

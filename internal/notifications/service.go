@@ -203,6 +203,12 @@ func (s *NotificationService) sendInAppTaskReminder(task *models.Task, minutesBe
 	return err == nil, err
 }
 
+// PurgeStaleInAppNotifications removes read in-app notifications older than 24 hours.
+func (s *NotificationService) PurgeStaleInAppNotifications() error {
+	cutoff := time.Now().Add(-24 * time.Hour)
+	return s.userNotificationRepo.DeleteStaleRead(cutoff)
+}
+
 func (s *NotificationService) recordTaskReminder(task *models.Task, channel models.NotificationChannel, dueFP time.Time) bool {
 	notification := &models.Notification{
 		UserID:      task.UserID,

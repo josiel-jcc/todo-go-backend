@@ -7,7 +7,7 @@ import (
 )
 
 type UserNotificationService interface {
-	List(userID uint, unreadOnly bool, page, limit int) ([]models.UserNotification, int64, error)
+	List(userID uint, unreadOnly, activeOnly bool, page, limit int) ([]models.UserNotification, int64, error)
 	UnreadCount(userID uint) (int64, error)
 	MarkRead(userID, notificationID uint) error
 	MarkAllRead(userID uint) error
@@ -21,8 +21,8 @@ func NewUserNotificationService(repo repositories.UserNotificationRepository) Us
 	return &userNotificationService{repo: repo}
 }
 
-func (s *userNotificationService) List(userID uint, unreadOnly bool, page, limit int) ([]models.UserNotification, int64, error) {
-	list, total, err := s.repo.ListByUserID(userID, unreadOnly, page, limit)
+func (s *userNotificationService) List(userID uint, unreadOnly, activeOnly bool, page, limit int) ([]models.UserNotification, int64, error) {
+	list, total, err := s.repo.ListByUserID(userID, unreadOnly, activeOnly, page, limit)
 	if err != nil {
 		return nil, 0, errors.NewInternalServerError(err)
 	}
