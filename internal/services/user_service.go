@@ -56,6 +56,9 @@ func (s *userService) DeleteAccount(userID uint, password string) error {
 		if err := tx.Where("user_id = ?", userID).Delete(&models.GroupMember{}).Error; err != nil {
 			return err
 		}
+		if err := tx.Where("user_id = ?", userID).Delete(&models.PushSubscription{}).Error; err != nil {
+			return err
+		}
 		if err := tx.Where("user_id = ?", userID).Delete(&models.Notification{}).Error; err != nil {
 			return err
 		}
@@ -112,27 +115,38 @@ func (s *userService) ExportAccount(userID uint) (map[string]interface{}, error)
 		Find(&groups).Error
 
 	var invitations []models.GroupInvitation
-	_ = database.DB.Where("invited_user_id = ?", userID).Find(&invitations).Error
+	_ = database.DB.Where("invited_user_id = ? OR invited_by_user_id = ?", userID, userID).Find(&invitations).Error
+
+	var pushSubscriptions []models.PushSubscription
+	if err := database.DB.Where("user_id = ?", userID).Find(&pushSubscriptions).Error; err != nil {
+		return nil, errors.NewInternalServerError(err)
+	}
+
+	var userNotifications []models.UserNotification
+	_ = database.DB.Where("user_id = ?", userID).Find(&userNotifications).Error
 
 	profile := map[string]interface{}{
-		"id":                    user.ID,
-		"username":              user.Username,
-		"email":                 user.Email,
-		"notifications_enabled": user.NotificationsEnabled,
-		"telegram_chat_id":      user.TelegramChatID,
-		"terms_accepted_at":     user.TermsAcceptedAt,
-		"created_at":            user.CreatedAt,
-		"updated_at":            user.UpdatedAt,
+		"id":                      user.ID,
+		"username":                user.Username,
+		"email":                   user.Email,
+		"notifications_enabled":   user.NotificationsEnabled,
+		"reminder_minutes_before": user.ReminderMinutesBefore,
+		"telegram_chat_id":        user.TelegramChatID,
+		"terms_accepted_at":       user.TermsAcceptedAt,
+		"created_at":              user.CreatedAt,
+		"updated_at":              user.UpdatedAt,
 	}
 
 	return map[string]interface{}{
-		"exported_at":         user.UpdatedAt,
-		"profile":             profile,
-		"tasks":               tasks,
-		"shared_tasks":        sharedTasks,
-		"tags":                tags,
-		"comments":            comments,
-		"groups":              groups,
-		"group_invitations":   invitations,
+		"exported_at":          user.UpdatedAt,
+		"profile":              profile,
+		"tasks":                tasks,
+		"shared_tasks":         sharedTasks,
+		"tags":                 tags,
+		"comments":             comments,
+		"groups":               groups,
+		"group_invitations":    invitations,
+		"push_subscriptions":   pushSubscriptions,
+		"user_notifications":   userNotifications,
 	}, nil
 }

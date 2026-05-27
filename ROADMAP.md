@@ -111,7 +111,7 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - ✅ `GET /users` filtrado; `?scope=invite` para convites
   - ⏳ Notificações quando alguém comenta (deixado para implementação futura)
 
-#### 9. Anexos/Arquivos
+#### 10. Anexos/Arquivos
 - **Descrição**: Permitir anexar arquivos às tarefas
 - **Benefícios**: Contexto adicional para tarefas
 - **Implementação**:
@@ -119,7 +119,7 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - Upload de arquivos (S3 ou storage local)
   - Limite de tamanho e tipos permitidos
 
-#### 10. Histórico de Alterações
+#### 11. Histórico de Alterações
 - **Descrição**: Log de todas as alterações em tarefas
 - **Benefícios**: Auditoria e rastreabilidade
 - **Implementação**:
@@ -129,15 +129,15 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 
 ### Baixa Prioridade
 
-#### 11. Templates de Tarefas
+#### 12. Templates de Tarefas
 - **Descrição**: Criar templates reutilizáveis de tarefas
 - **Benefícios**: Agilidade na criação de tarefas recorrentes
 
-#### 12. Recorrência de Tarefas
+#### 13. Recorrência de Tarefas
 - **Descrição**: Tarefas que se repetem automaticamente
 - **Benefícios**: Para tarefas periódicas (diárias, semanais, mensais)
 
-#### 13. Compartilhamento de Tarefas ✅
+#### 14. Compartilhamento de Tarefas ✅
 - **Descrição**: Compartilhar tarefas com outros usuários para visualização e edição colaborativa (dono da tarefa = `user_id` da tarefa; apenas o dono adiciona/remove compartilhados)
 - **Benefícios**: Colaboração sem precisar reatribuir a tarefa
 - **Status**: ✅ **Implementado**
@@ -147,7 +147,7 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - ✅ `DELETE /api/v1/tasks/{id}/share/{user_id}` para remover um usuário da lista
   - ✅ Documentado no OpenAPI (Swagger)
 
-#### 14. Dashboard/Estatísticas ✅
+#### 15. Dashboard/Estatísticas ✅
 - **Descrição**: Endpoint com estatísticas do usuário
 - **Benefícios**: Visão geral do progresso
 - **Status**: ✅ **Implementado**
@@ -214,11 +214,12 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 ### Alta Prioridade
 
 #### 1. Rate Limiting Global
-- **Descrição**: Limitar requisições por IP
+- **Descrição**: Limitar requisições por IP em rotas públicas e protegidas
 - **Benefícios**: Proteção contra DDoS e brute force
+- **Status**: ⏳ **Parcial** — `AuthRateLimitMiddleware` em `/auth` (5 req/min por IP)
 - **Implementação**:
-  - Middleware usando `golang.org/x/time/rate` ou Redis
-  - Limites: 100 req/min por IP, 10 req/min para auth
+  - ✅ Rate limit em `/api/v1/auth/*`
+  - ⏳ Middleware global (ex.: 100 req/min por IP) e limites por usuário autenticado
 
 #### 2. Validação de Entrada Robusta
 - **Descrição**: Melhorar validações de input
@@ -530,7 +531,7 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 2. ✅ Busca por texto
 3. ✅ Filtros avançados (incl. prioridade, tags, `GET /tasks/assigned`)
 4. Logs estruturados
-5. Rate limiting
+5. Rate limiting global (parcial: `/auth` já limitado)
 6. Health check melhorado
 7. ✅ CI/CD básico (GitHub Actions)
 
@@ -573,6 +574,9 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 - ✅ **Notificações de Tarefas** (Dezembro 2024) - Sistema completo de notificações com email e Telegram, scheduler cron, histórico e configuração por usuário
 - ✅ **Compartilhamento de Tarefas** (Maio 2026) - `POST/DELETE` em `/tasks/{id}/share`, many-to-many com usuários, controle pelo dono da tarefa
 - ✅ **OpenAPI / listagens** (Maio 2026) - Parâmetros `priority`, `tag_ids` e `sort_by` com `priority` documentados em `GET /tasks` e `GET /tasks/assigned`
+- ✅ **Grupos e convites** (Maio 2026) - Colaboração restrita por grupo, notificações in-app
+- ✅ **Lembretes com horário e Web Push** (Maio 2026) - `task_reminder`, VAPID, subscriptions no backend
+- ✅ **LGPD — exportação/exclusão** (Maio 2026) - Export JSON e exclusão em cascata incluindo push e grupos; docs de compliance sincronizadas
 - ✅ **Dashboard / Estatísticas** (Maio 2026) - `GET /api/v1/stats` com agregados por resumo, hoje, tipo e prioridade
 
 ---

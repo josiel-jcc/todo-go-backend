@@ -4,7 +4,7 @@ API RESTful para gerenciamento de tarefas desenvolvida em Go, com autenticação
 
 ## Conformidade (LGPD e segurança)
 
-Documentação em [`docs/compliance/`](docs/compliance/):
+**Fonte canônica:** [`todo-frontend/docs/compliance/`](../todo-frontend/docs/compliance/) (exibida no app em `/privacidade` e `/termos`). Cópia espelhada em [`docs/compliance/`](docs/compliance/).
 
 - [Política de Privacidade](docs/compliance/PRIVACY.md)
 - [Termos de Uso](docs/compliance/TERMS.md)
@@ -26,7 +26,9 @@ Documentação em [`docs/compliance/`](docs/compliance/):
 - ✅ Filtros por tipo e status de conclusão
 - ✅ Sistema de Tags para categorizar tarefas
 - ✅ Comentários em tarefas
-- ✅ Notificações por Email e Telegram
+- ✅ Notificações por Email, Telegram e Web Push (PWA)
+- ✅ Grupos, convites e notificações in-app
+- ✅ Exportação e exclusão de conta (LGPD)
 - ✅ Health check endpoint
 - ✅ CORS configurável
 - ✅ Suporte a MySQL e SQLite
@@ -115,6 +117,8 @@ A API estará disponível em `http://localhost:8080`
 
 ## Endpoints
 
+> **Referência atualizada:** use o Swagger/OpenAPI (`/swagger/index.html` ou `/openapi.json`) como fonte da verdade. A API inclui paginação, busca, filtros avançados, grupos, compartilhamento, lembretes com horário, Web Push (`/notifications/push/*`), exportação/exclusão de conta (`/users/me/export`, `DELETE /users/me`) e rate limit em `/auth`.
+
 ### Autenticação
 
 #### Registrar usuário
@@ -192,13 +196,15 @@ Content-Type: application/json
 
 #### Listar tarefas
 ```http
-GET /api/v1/tasks?type=casa&completed=false
+GET /api/v1/tasks?type=casa&completed=false&page=1&limit=10&search=texto&priority=alta
 Authorization: Bearer <token>
 ```
 
-**Query parameters opcionais:**
-- `type`: Filtrar por tipo (casa, trabalho, lazer, saude)
-- `completed`: Filtrar por status (true/false)
+**Query parameters opcionais (principais):**
+- `type`, `completed`, `search`, `priority`, `tag_ids`
+- `page`, `limit`, `sort_by`, `order`
+- Filtros de data: `due_date_from`, `due_date_to`, `overdue`, `today`, `this_week`, `this_month`
+- `GET /api/v1/tasks/assigned` — tarefas que você delegou a outros
 
 #### Obter tarefa específica
 ```http
@@ -708,7 +714,7 @@ Para ver o plano completo de melhorias futuras, consulte o arquivo [ROADMAP.md](
 - [x] Comentários em tarefas
 - [x] Health check endpoint
 - [x] CORS configurável
-- [ ] Rate limiting
+- [~] Rate limiting (parcial: `/auth` — 5 req/min por IP)
 - [ ] Logs estruturados
 - [ ] Cache com Redis
 - [ ] Refresh tokens
