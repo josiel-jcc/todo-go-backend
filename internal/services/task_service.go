@@ -70,11 +70,12 @@ type PaginatedTasksResponse struct {
 }
 
 type taskService struct {
-	taskRepo         repositories.TaskRepository
-	userRepo         repositories.UserRepository
-	tagRepo          repositories.TagRepository
-	groupService     GroupService
-	notificationRepo repositories.NotificationRepository
+	taskRepo              repositories.TaskRepository
+	userRepo              repositories.UserRepository
+	tagRepo               repositories.TagRepository
+	groupService          GroupService
+	notificationRepo      repositories.NotificationRepository
+	activityNotifications ActivityNotificationService
 }
 
 // NewTaskService creates a new instance of TaskService
@@ -84,13 +85,15 @@ func NewTaskService(
 	tagRepo repositories.TagRepository,
 	groupService GroupService,
 	notificationRepo repositories.NotificationRepository,
+	activityNotifications ActivityNotificationService,
 ) TaskService {
 	return &taskService{
-		taskRepo:         taskRepo,
-		userRepo:         userRepo,
-		tagRepo:          tagRepo,
-		groupService:     groupService,
-		notificationRepo: notificationRepo,
+		taskRepo:              taskRepo,
+		userRepo:              userRepo,
+		tagRepo:               tagRepo,
+		groupService:          groupService,
+		notificationRepo:      notificationRepo,
+		activityNotifications: activityNotifications,
 	}
 }
 
@@ -370,6 +373,7 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 		}
 		task.ReminderMinutesBefore = req.ReminderMinutesBefore
 	}
+	wasCompleted := task.Completed
 	if req.Completed != nil {
 		if *req.Completed && !task.Completed {
 			now := time.Now()
@@ -412,6 +416,17 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 	task, err = s.taskRepo.FindByID(task.ID)
 	if err != nil {
 		return nil, errors.NewInternalServerError(err)
+	}
+
+	if req.Completed != nil && *req.Completed && !wasCompleted && s.activityNotifications != nil {
+		completerName := ""
+		if completer, err := s.userRepo.FindByID(userID); err == nil {
+			completerName = completer.Username
+		}
+		if completerName == "" {
+			completerName = "Usuário"
+		}
+		_ = s.activityNotifications.NotifyDelegatedTaskCompleted(task, userID, completerName)
 	}
 
 	return task, nil

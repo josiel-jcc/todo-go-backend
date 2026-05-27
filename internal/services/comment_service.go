@@ -27,15 +27,21 @@ type UpdateCommentRequest struct {
 }
 
 type commentService struct {
-	commentRepo repositories.CommentRepository
-	taskRepo    repositories.TaskRepository
+	commentRepo          repositories.CommentRepository
+	taskRepo             repositories.TaskRepository
+	activityNotifications ActivityNotificationService
 }
 
 // NewCommentService creates a new instance of CommentService
-func NewCommentService(commentRepo repositories.CommentRepository, taskRepo repositories.TaskRepository) CommentService {
+func NewCommentService(
+	commentRepo repositories.CommentRepository,
+	taskRepo repositories.TaskRepository,
+	activityNotifications ActivityNotificationService,
+) CommentService {
 	return &commentService{
-		commentRepo: commentRepo,
-		taskRepo:    taskRepo,
+		commentRepo:          commentRepo,
+		taskRepo:             taskRepo,
+		activityNotifications: activityNotifications,
 	}
 }
 
@@ -67,6 +73,15 @@ func (s *commentService) Create(userID uint, req *CreateCommentRequest) (*models
 	comment, err = s.commentRepo.FindByID(comment.ID)
 	if err != nil {
 		return nil, errors.NewInternalServerError(err)
+	}
+
+	task, err := s.taskRepo.FindByID(req.TaskID)
+	if err == nil && s.activityNotifications != nil {
+		authorName := comment.User.Username
+		if authorName == "" {
+			authorName = "Usuário"
+		}
+		_ = s.activityNotifications.NotifyTaskComment(task, comment, authorName)
 	}
 
 	return comment, nil
