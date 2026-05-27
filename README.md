@@ -721,7 +721,8 @@ Para ver o plano completo de melhorias futuras, consulte o arquivo [ROADMAP.md](
 
 ## Documentação Adicional
 
-- [ROADMAP.md](./ROADMAP.md) - Plano de melhorias futuras
+- [ROADMAP.md](./ROADMAP.md) - Plano de melhorias futuras (técnico)
+- [docs/PRODUCT_ROADMAP.md](./docs/PRODUCT_ROADMAP.md) - Ideias de produto e priorização por ciclo
 - [NOTIFICATIONS_SETUP.md](./NOTIFICATIONS_SETUP.md) - Guia de configuração de notificações
 - [TELEGRAM_CHAT_ID_GUIDE.md](./TELEGRAM_CHAT_ID_GUIDE.md) - Como obter o Chat ID do Telegram
 - [TEST_NOTIFICATIONS.md](./TEST_NOTIFICATIONS.md) - Como testar notificações

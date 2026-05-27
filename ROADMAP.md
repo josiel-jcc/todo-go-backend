@@ -2,6 +2,8 @@
 
 Este documento apresenta o plano de melhorias futuras para o projeto, organizado por categorias e prioridades.
 
+> **Planejamento de produto:** ideias priorizadas por impacto, ciclos sugeridos e escolha por público-alvo — ver [docs/PRODUCT_ROADMAP.md](./docs/PRODUCT_ROADMAP.md).
+
 ## 📋 Índice
 
 1. [Funcionalidades](#funcionalidades)
@@ -145,15 +147,13 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - ✅ `DELETE /api/v1/tasks/{id}/share/{user_id}` para remover um usuário da lista
   - ✅ Documentado no OpenAPI (Swagger)
 
-#### 15. Dashboard/Estatísticas
+#### 15. Dashboard/Estatísticas ✅
 - **Descrição**: Endpoint com estatísticas do usuário
 - **Benefícios**: Visão geral do progresso
-- **Métricas**:
-  - Total de tarefas
-  - Tarefas completas vs pendentes
-  - Tarefas por tipo
-  - Tarefas vencidas
-  - Taxa de conclusão
+- **Status**: ✅ **Implementado**
+- **Implementação**:
+  - ✅ `GET /api/v1/stats` — resumo, hoje, por tipo, por prioridade, em progresso
+  - ✅ Frontend consome via `useTaskStats` na página inicial
 
 ---
 
@@ -577,6 +577,7 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 - ✅ **Grupos e convites** (Maio 2026) - Colaboração restrita por grupo, notificações in-app
 - ✅ **Lembretes com horário e Web Push** (Maio 2026) - `task_reminder`, VAPID, subscriptions no backend
 - ✅ **LGPD — exportação/exclusão** (Maio 2026) - Export JSON e exclusão em cascata incluindo push e grupos; docs de compliance sincronizadas
+- ✅ **Dashboard / Estatísticas** (Maio 2026) - `GET /api/v1/stats` com agregados por resumo, hoje, tipo e prioridade
 
 ---
 
