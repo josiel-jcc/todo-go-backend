@@ -31,13 +31,13 @@ Implementado: `GET /api/v1/stats` com resumo, hoje, `by_type`, `by_priority` e `
 |---------|---------|
 | ✅ Feito | Alto |
 
-### 2. Notificação quando alguém comenta
+### 2. Notificação quando alguém comenta ✅
 
-Pendente no ROADMAP técnico. Completa o loop de colaboração (hoje: convite de grupo + lembrete de tarefa).
+Implementado: in-app `task_comment` para dono, quem delegou e compartilhados (exceto o autor). Também `task_completed` para quem criou/delegou a tarefa quando o responsável marca como concluída.
 
 | Esforço | Impacto |
 |---------|---------|
-| Baixo | Alto (família/equipe) |
+| ✅ Feito | Alto (família/equipe) |
 
 ### 3. Subtarefas (`parent_task_id`)
 

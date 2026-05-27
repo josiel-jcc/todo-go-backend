@@ -160,7 +160,8 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	authService := services.NewAuthService(userRepo, jwtSecret, groupService)
 	tagRepo := repositories.NewTagRepository()
 	notificationRepo := repositories.NewNotificationRepository()
-	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo)
+	activityNotificationService := services.NewActivityNotificationService(userNotificationRepo)
+	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo, activityNotificationService)
 	statsService := services.NewStatsService(repositories.NewStatsRepository())
 
 	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)

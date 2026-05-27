@@ -10,8 +10,10 @@ import (
 type UserNotificationType string
 
 const (
-	UserNotificationTypeGroupInvite  UserNotificationType = "group_invite"
-	UserNotificationTypeTaskReminder UserNotificationType = "task_reminder"
+	UserNotificationTypeGroupInvite    UserNotificationType = "group_invite"
+	UserNotificationTypeTaskReminder     UserNotificationType = "task_reminder"
+	UserNotificationTypeTaskComment      UserNotificationType = "task_comment"
+	UserNotificationTypeTaskCompleted UserNotificationType = "task_completed"
 )
 
 // UserNotification represents an in-app notification for a user.
@@ -20,7 +22,7 @@ type UserNotification struct {
 	UserID    uint                 `json:"user_id" gorm:"not null;index"`
 	Type      UserNotificationType `json:"type" gorm:"type:varchar(30);not null"`
 	Payload   string               `json:"payload" gorm:"type:text;not null"`
-	Read      bool                 `json:"read" gorm:"column:read;default:false"`
+	Read      bool                 `json:"read" gorm:"default:false"`
 	ReadAt    *time.Time           `json:"read_at,omitempty"`
 	CreatedAt time.Time            `json:"created_at"`
 	UpdatedAt time.Time            `json:"updated_at"`

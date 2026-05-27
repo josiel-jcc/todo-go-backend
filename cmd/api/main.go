@@ -68,11 +68,12 @@ func main() {
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret, groupService)
 	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
 	notificationRepo := repositories.NewNotificationRepository()
-	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo)
+	activityNotificationService := services.NewActivityNotificationService(userNotificationRepo)
+	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo, activityNotificationService)
 	statsRepo := repositories.NewStatsRepository()
 	statsService := services.NewStatsService(statsRepo)
 	tagService := services.NewTagService(tagRepo)
-	commentService := services.NewCommentService(commentRepo, taskRepo)
+	commentService := services.NewCommentService(commentRepo, taskRepo, activityNotificationService)
 
 	emailService := notifications.NewEmailService(
 		cfg.SMTPHost,

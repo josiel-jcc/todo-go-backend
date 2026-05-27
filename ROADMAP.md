@@ -109,7 +109,8 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - ✅ APIs `/groups`, `/group-invitations`, `/notifications/in-app`
   - ✅ Migração idempotente no startup; novos usuários no grupo padrão
   - ✅ `GET /users` filtrado; `?scope=invite` para convites
-  - ⏳ Notificações quando alguém comenta (deixado para implementação futura)
+  - ✅ Notificações in-app quando alguém comenta (`task_comment`)
+  - ✅ Notificação in-app quando tarefa delegada é concluída (`task_completed`)
 
 #### 10. Anexos/Arquivos
 - **Descrição**: Permitir anexar arquivos às tarefas
