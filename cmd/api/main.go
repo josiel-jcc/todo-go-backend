@@ -69,6 +69,8 @@ func main() {
 	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
 	notificationRepo := repositories.NewNotificationRepository()
 	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo)
+	statsRepo := repositories.NewStatsRepository()
+	statsService := services.NewStatsService(statsRepo)
 	tagService := services.NewTagService(tagRepo)
 	commentService := services.NewCommentService(commentRepo, taskRepo)
 
@@ -93,6 +95,7 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authService, cfg)
 	taskHandler := handlers.NewTaskHandler(taskService)
+	statsHandler := handlers.NewStatsHandler(statsService)
 	tagHandler := handlers.NewTagHandler(tagService)
 	commentHandler := handlers.NewCommentHandler(commentService)
 	userHandler := handlers.NewUserHandler(notificationService, userRepo, userService, groupService)
@@ -130,6 +133,7 @@ func main() {
 	{
 		protected.POST("/auth/logout", authHandler.Logout)
 
+		protected.GET("/stats", statsHandler.GetTaskStats)
 		protected.GET("/tasks", taskHandler.GetTasks)
 		protected.GET("/tasks/assigned", taskHandler.GetAssignedTasks)
 		protected.POST("/tasks", taskHandler.CreateTask)

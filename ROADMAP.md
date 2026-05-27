@@ -2,6 +2,8 @@
 
 Este documento apresenta o plano de melhorias futuras para o projeto, organizado por categorias e prioridades.
 
+> **Planejamento de produto:** ideias priorizadas por impacto, ciclos sugeridos e escolha por público-alvo — ver [docs/PRODUCT_ROADMAP.md](./docs/PRODUCT_ROADMAP.md).
+
 ## 📋 Índice
 
 1. [Funcionalidades](#funcionalidades)
@@ -145,15 +147,13 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
   - ✅ `DELETE /api/v1/tasks/{id}/share/{user_id}` para remover um usuário da lista
   - ✅ Documentado no OpenAPI (Swagger)
 
-#### 14. Dashboard/Estatísticas
+#### 14. Dashboard/Estatísticas ✅
 - **Descrição**: Endpoint com estatísticas do usuário
 - **Benefícios**: Visão geral do progresso
-- **Métricas**:
-  - Total de tarefas
-  - Tarefas completas vs pendentes
-  - Tarefas por tipo
-  - Tarefas vencidas
-  - Taxa de conclusão
+- **Status**: ✅ **Implementado**
+- **Implementação**:
+  - ✅ `GET /api/v1/stats` — resumo, hoje, por tipo, por prioridade, em progresso
+  - ✅ Frontend consome via `useTaskStats` na página inicial
 
 ---
 
@@ -573,6 +573,7 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 - ✅ **Notificações de Tarefas** (Dezembro 2024) - Sistema completo de notificações com email e Telegram, scheduler cron, histórico e configuração por usuário
 - ✅ **Compartilhamento de Tarefas** (Maio 2026) - `POST/DELETE` em `/tasks/{id}/share`, many-to-many com usuários, controle pelo dono da tarefa
 - ✅ **OpenAPI / listagens** (Maio 2026) - Parâmetros `priority`, `tag_ids` e `sort_by` com `priority` documentados em `GET /tasks` e `GET /tasks/assigned`
+- ✅ **Dashboard / Estatísticas** (Maio 2026) - `GET /api/v1/stats` com agregados por resumo, hoje, tipo e prioridade
 
 ---
 

@@ -161,6 +161,7 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	tagRepo := repositories.NewTagRepository()
 	notificationRepo := repositories.NewNotificationRepository()
 	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo)
+	statsService := services.NewStatsService(repositories.NewStatsRepository())
 
 	userService := services.NewUserService(userRepo, groupRepo, groupInvitationRepo, userNotificationRepo)
 	userNotificationService := services.NewUserNotificationService(userNotificationRepo)
@@ -170,6 +171,7 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	pushService := notifications.NewPushService(cfg, pushSubscriptionRepo)
 	authHandler := NewAuthHandler(authService, cfg)
 	taskHandler := NewTaskHandler(taskService)
+	statsHandler := NewStatsHandler(statsService)
 	userHandler := NewUserHandler(nil, userRepo, userService, groupService)
 	groupHandler := NewGroupHandler(groupService)
 	groupInvitationHandler := NewGroupInvitationHandler(groupService)
@@ -187,6 +189,7 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware(jwtSecret))
 	{
+		protected.GET("/stats", statsHandler.GetTaskStats)
 		protected.GET("/tasks", taskHandler.GetTasks)
 		protected.GET("/tasks/assigned", taskHandler.GetAssignedTasks)
 		protected.GET("/tasks/:id", taskHandler.GetTask)
