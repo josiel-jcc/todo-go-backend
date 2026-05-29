@@ -59,12 +59,20 @@ func migrateTestSchema(db *gorm.DB) error {
 		&models.GroupMember{},
 		&models.GroupInvitation{},
 		&models.UserNotification{},
+		&models.FinanceAccount{},
+		&models.FinanceCategory{},
+		&models.FinanceTransaction{},
+		&models.FinanceMemberRole{},
 	)
 }
 
 func truncateTestData(db *gorm.DB, useMySQL bool) {
 	if useMySQL {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+		db.Exec("TRUNCATE TABLE finance_member_roles")
+		db.Exec("TRUNCATE TABLE finance_transactions")
+		db.Exec("TRUNCATE TABLE finance_categories")
+		db.Exec("TRUNCATE TABLE finance_accounts")
 		db.Exec("TRUNCATE TABLE user_notifications")
 		db.Exec("TRUNCATE TABLE group_invitations")
 		db.Exec("TRUNCATE TABLE group_members")
@@ -80,6 +88,10 @@ func truncateTestData(db *gorm.DB, useMySQL bool) {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 		return
 	}
+	db.Exec("DELETE FROM finance_member_roles")
+	db.Exec("DELETE FROM finance_transactions")
+	db.Exec("DELETE FROM finance_categories")
+	db.Exec("DELETE FROM finance_accounts")
 	db.Exec("DELETE FROM user_notifications")
 	db.Exec("DELETE FROM group_invitations")
 	db.Exec("DELETE FROM group_members")
@@ -176,6 +188,7 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	userHandler := NewUserHandler(nil, userRepo, userService, groupService)
 	groupHandler := NewGroupHandler(groupService)
 	groupInvitationHandler := NewGroupInvitationHandler(groupService)
+	financeHandler := NewFinanceHandler(groupService)
 	userNotificationHandler := NewUserNotificationHandler(userNotificationService)
 	pushNotificationHandler := NewPushNotificationHandler(pushService, pushSubscriptionRepo)
 
@@ -218,6 +231,11 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 		protected.GET("/group-invitations", groupInvitationHandler.ListReceived)
 		protected.POST("/group-invitations/:id/accept", groupInvitationHandler.Accept)
 		protected.POST("/group-invitations/:id/decline", groupInvitationHandler.Decline)
+
+		finance := protected.Group("/finance")
+		{
+			finance.GET("/groups/:groupId/health", financeHandler.Health)
+		}
 
 		protected.GET("/notifications/in-app", userNotificationHandler.List)
 		protected.GET("/notifications/in-app/unread-count", userNotificationHandler.UnreadCount)

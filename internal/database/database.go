@@ -57,6 +57,10 @@ func Connect(cfg *config.Config) error {
 		&models.GroupMember{},
 		&models.GroupInvitation{},
 		&models.UserNotification{},
+		&models.FinanceAccount{},
+		&models.FinanceCategory{},
+		&models.FinanceTransaction{},
+		&models.FinanceMemberRole{},
 	)
 
 	if err != nil {

@@ -102,6 +102,7 @@ func main() {
 	userHandler := handlers.NewUserHandler(notificationService, userRepo, userService, groupService)
 	groupHandler := handlers.NewGroupHandler(groupService)
 	groupInvitationHandler := handlers.NewGroupInvitationHandler(groupService)
+	financeHandler := handlers.NewFinanceHandler(groupService)
 	userNotificationHandler := handlers.NewUserNotificationHandler(userNotificationService)
 	pushNotificationHandler := handlers.NewPushNotificationHandler(pushService, pushSubscriptionRepo)
 
@@ -180,6 +181,11 @@ func main() {
 		protected.GET("/group-invitations", groupInvitationHandler.ListReceived)
 		protected.POST("/group-invitations/:id/accept", groupInvitationHandler.Accept)
 		protected.POST("/group-invitations/:id/decline", groupInvitationHandler.Decline)
+
+		finance := protected.Group("/finance")
+		{
+			finance.GET("/groups/:groupId/health", financeHandler.Health)
+		}
 
 		protected.GET("/notifications/in-app", userNotificationHandler.List)
 		protected.GET("/notifications/in-app/unread-count", userNotificationHandler.UnreadCount)
