@@ -27,14 +27,14 @@ const (
 type FinanceTransaction struct {
 	ID             uint                         `json:"id" gorm:"primaryKey"`
 	GroupID        uint                         `json:"group_id" gorm:"not null;index:idx_fin_tx_group_date"`
-	AccountID      uint                         `json:"account_id" gorm:"not null;index"`
-	CategoryID     *uint                        `json:"category_id,omitempty" gorm:"index"`
-	Type           FinanceTransactionType       `json:"type" gorm:"type:varchar(20);not null"`
-	AmountCents    int64                        `json:"amount_cents" gorm:"not null"`
-	Description    string                       `json:"description" gorm:"type:varchar(255)"`
-	Date           time.Time                    `json:"date" gorm:"type:date;not null;index:idx_fin_tx_group_date"`
-	Visibility     FinanceTransactionVisibility `json:"visibility" gorm:"type:varchar(20);not null;default:household"`
-	TransferPairID *uint                        `json:"transfer_pair_id,omitempty" gorm:"index"`
+	AccountID          uint                         `json:"account_id" gorm:"not null;index"`
+	TransferAccountID  *uint                        `json:"transfer_account_id,omitempty" gorm:"index"`
+	CategoryID         *uint                        `json:"category_id,omitempty" gorm:"index"`
+	Type               FinanceTransactionType       `json:"type" gorm:"type:varchar(20);not null"`
+	AmountCents        int64                        `json:"amount_cents" gorm:"not null"`
+	Description        string                       `json:"description" gorm:"type:varchar(255)"`
+	Date               time.Time                    `json:"date" gorm:"type:date;not null;index:idx_fin_tx_group_date"`
+	Visibility         FinanceTransactionVisibility `json:"visibility" gorm:"type:varchar(20);not null;default:household"`
 	CreatedBy      uint                         `json:"created_by" gorm:"not null;index"`
 	CreatedAt      time.Time                    `json:"created_at"`
 	UpdatedAt      time.Time                    `json:"updated_at"`

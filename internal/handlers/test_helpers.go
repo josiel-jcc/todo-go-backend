@@ -66,6 +66,22 @@ func migrateTestSchema(db *gorm.DB) error {
 	)
 }
 
+func financeTruncateTables(db *gorm.DB, useMySQL bool) {
+	if useMySQL {
+		db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+		db.Exec("TRUNCATE TABLE finance_transactions")
+		db.Exec("TRUNCATE TABLE finance_member_roles")
+		db.Exec("TRUNCATE TABLE finance_categories")
+		db.Exec("TRUNCATE TABLE finance_accounts")
+		db.Exec("SET FOREIGN_KEY_CHECKS = 1")
+		return
+	}
+	db.Exec("DELETE FROM finance_transactions")
+	db.Exec("DELETE FROM finance_member_roles")
+	db.Exec("DELETE FROM finance_categories")
+	db.Exec("DELETE FROM finance_accounts")
+}
+
 func truncateTestData(db *gorm.DB, useMySQL bool) {
 	if useMySQL {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 0")
@@ -167,6 +183,8 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	pushSubscriptionRepo := repositories.NewPushSubscriptionRepository()
 
 	groupService := services.NewGroupService(groupRepo, groupInvitationRepo, userNotificationRepo, userRepo)
+	financeRepo := repositories.NewFinanceRepository()
+	financeService := services.NewFinanceService(financeRepo)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, jwtSecret, groupService)
@@ -188,7 +206,7 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 	userHandler := NewUserHandler(nil, userRepo, userService, groupService)
 	groupHandler := NewGroupHandler(groupService)
 	groupInvitationHandler := NewGroupInvitationHandler(groupService)
-	financeHandler := NewFinanceHandler(groupService)
+	financeHandler := NewFinanceHandler(financeService, groupService)
 	userNotificationHandler := NewUserNotificationHandler(userNotificationService)
 	pushNotificationHandler := NewPushNotificationHandler(pushService, pushSubscriptionRepo)
 
@@ -234,7 +252,21 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 
 		finance := protected.Group("/finance")
 		{
-			finance.GET("/groups/:groupId/health", financeHandler.Health)
+			grp := finance.Group("/groups/:groupId")
+			{
+				grp.GET("/health", financeHandler.Health)
+				grp.GET("/accounts", financeHandler.ListAccounts)
+				grp.POST("/accounts", financeHandler.CreateAccount)
+				grp.GET("/accounts/:accountId", financeHandler.GetAccount)
+				grp.PUT("/accounts/:accountId", financeHandler.UpdateAccount)
+				grp.DELETE("/accounts/:accountId", financeHandler.DeleteAccount)
+				grp.GET("/categories", financeHandler.ListCategories)
+				grp.POST("/categories", financeHandler.CreateCategory)
+				grp.GET("/transactions", financeHandler.ListTransactions)
+				grp.POST("/transactions", financeHandler.CreateTransaction)
+				grp.GET("/dashboard", financeHandler.GetDashboard)
+				grp.PUT("/members/:userId/role", financeHandler.UpdateMemberRole)
+			}
 		}
 
 		protected.GET("/notifications/in-app", userNotificationHandler.List)
