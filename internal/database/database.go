@@ -61,6 +61,7 @@ func Connect(cfg *config.Config) error {
 		&models.FinanceCategory{},
 		&models.FinanceTransaction{},
 		&models.FinanceMemberRole{},
+		&models.FinanceCategoryBudget{},
 	)
 
 	if err != nil {

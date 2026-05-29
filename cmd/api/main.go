@@ -207,6 +207,8 @@ func main() {
 				grp.DELETE("/transactions/:transactionId", financeHandler.DeleteTransaction)
 
 				grp.GET("/dashboard", financeHandler.GetDashboard)
+				grp.GET("/budgets", financeHandler.ListCategoryBudgets)
+				grp.PUT("/budgets", financeHandler.SetCategoryBudgets)
 				grp.GET("/members/roles", financeHandler.ListMemberRoles)
 				grp.PUT("/members/:userId/role", financeHandler.UpdateMemberRole)
 			}

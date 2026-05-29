@@ -484,3 +484,47 @@ func (h *FinanceHandler) UpdateMemberRole(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, role)
 }
+
+type setBudgetsBody struct {
+	Items []setBudgetItemBody `json:"items" binding:"required,dive"`
+}
+
+type setBudgetItemBody struct {
+	CategoryID uint  `json:"category_id" binding:"required"`
+	LimitCents int64 `json:"limit_cents" binding:"required"`
+}
+
+func (h *FinanceHandler) ListCategoryBudgets(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	items, err := h.financeService.ListCategoryBudgets(userID, groupID, c.Query("month"))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+func (h *FinanceHandler) SetCategoryBudgets(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	var body setBudgetsBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		handleValidationError(c, err)
+		return
+	}
+	items := make([]services.SetCategoryBudgetItem, len(body.Items))
+	for i, it := range body.Items {
+		items[i] = services.SetCategoryBudgetItem{CategoryID: it.CategoryID, LimitCents: it.LimitCents}
+	}
+	result, err := h.financeService.SetCategoryBudgets(userID, groupID, c.Query("month"), items)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}

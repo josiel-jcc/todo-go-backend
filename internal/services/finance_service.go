@@ -33,6 +33,8 @@ type FinanceService interface {
 	DeleteTransaction(userID, groupID, transactionID uint) error
 
 	GetDashboard(userID, groupID uint, month string) (*FinanceDashboard, error)
+	ListCategoryBudgets(userID, groupID uint, month string) ([]FinanceCategoryBudgetItem, error)
+	SetCategoryBudgets(userID, groupID uint, month string, items []SetCategoryBudgetItem) ([]FinanceCategoryBudgetItem, error)
 	ListMemberRoles(userID, groupID uint) ([]models.FinanceMemberRole, error)
 	UpdateMemberRole(userID, groupID, targetUserID uint, role models.FinanceMemberRoleName) (*models.FinanceMemberRole, error)
 }
@@ -61,10 +63,25 @@ type FinanceDashboardTotals struct {
 
 // FinanceCategoryBreakdown is per-category totals.
 type FinanceCategoryBreakdown struct {
+	CategoryID  uint     `json:"category_id"`
+	Name        string   `json:"name"`
+	Kind        string   `json:"kind"`
+	TotalCents  int64    `json:"total_cents"`
+	BudgetCents *int64   `json:"budget_cents,omitempty"`
+	PercentUsed *float64 `json:"percent_used,omitempty"`
+}
+
+// FinanceCategoryBudgetItem is a category budget for a month.
+type FinanceCategoryBudgetItem struct {
 	CategoryID   uint   `json:"category_id"`
-	Name         string `json:"name"`
-	Kind         string `json:"kind"`
-	TotalCents   int64  `json:"total_cents"`
+	CategoryName string `json:"category_name"`
+	LimitCents   int64  `json:"limit_cents"`
+}
+
+// SetCategoryBudgetItem sets or updates a budget line.
+type SetCategoryBudgetItem struct {
+	CategoryID uint
+	LimitCents int64
 }
 
 type CreateFinanceAccountRequest struct {
@@ -656,10 +673,26 @@ func (s *financeService) GetDashboard(userID, groupID uint, month string) (*Fina
 			NetCents:     agg.IncomeCents - agg.ExpenseCents,
 		},
 	}
+	budgets, err := s.financeRepo.ListCategoryBudgets(groupID, monthStr)
+	if err != nil {
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	budgetByCategory := map[uint]int64{}
+	for _, b := range budgets {
+		budgetByCategory[b.CategoryID] = b.LimitCents
+	}
 	for _, c := range agg.ByCategory {
-		dash.ByCategory = append(dash.ByCategory, FinanceCategoryBreakdown{
+		item := FinanceCategoryBreakdown{
 			CategoryID: c.CategoryID, Name: c.CategoryName, Kind: string(c.Kind), TotalCents: c.TotalCents,
-		})
+		}
+		if limit, ok := budgetByCategory[c.CategoryID]; ok && c.Kind == models.FinanceCategoryExpense {
+			item.BudgetCents = &limit
+			if limit > 0 {
+				pct := float64(c.TotalCents) / float64(limit) * 100
+				item.PercentUsed = &pct
+			}
+		}
+		dash.ByCategory = append(dash.ByCategory, item)
 	}
 	accounts, err := s.ListAccounts(userID, groupID)
 	if err != nil {
@@ -678,6 +711,64 @@ func (s *financeService) GetDashboard(userID, groupID uint, month string) (*Fina
 		dash.Accounts = accounts
 	}
 	return dash, nil
+}
+
+func (s *financeService) ListCategoryBudgets(userID, groupID uint, month string) ([]FinanceCategoryBudgetItem, error) {
+	if _, err := s.EnsureAccess(userID, groupID); err != nil {
+		return nil, err
+	}
+	_, _, monthStr, err := parseMonth(month)
+	if err != nil {
+		return nil, err
+	}
+	return s.buildBudgetItems(groupID, monthStr)
+}
+
+func (s *financeService) SetCategoryBudgets(userID, groupID uint, month string, items []SetCategoryBudgetItem) ([]FinanceCategoryBudgetItem, error) {
+	if _, err := s.requireRole(userID, groupID, models.FinanceRoleEditor); err != nil {
+		return nil, err
+	}
+	_, _, monthStr, err := parseMonth(month)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		if item.LimitCents < 0 {
+			return nil, apperrors.NewInvalidInputError("limit must be non-negative")
+		}
+		cat, err := s.financeRepo.FindCategoryByID(groupID, item.CategoryID)
+		if err != nil {
+			return nil, apperrors.NewInvalidInputError("invalid category")
+		}
+		if cat.Kind != models.FinanceCategoryExpense {
+			return nil, apperrors.NewInvalidInputError("budget applies to expense categories only")
+		}
+		if err := s.financeRepo.UpsertCategoryBudget(&models.FinanceCategoryBudget{
+			GroupID: groupID, CategoryID: item.CategoryID, Month: monthStr,
+			LimitCents: item.LimitCents, CreatedBy: userID,
+		}); err != nil {
+			return nil, apperrors.NewInternalServerError(err)
+		}
+	}
+	return s.buildBudgetItems(groupID, monthStr)
+}
+
+func (s *financeService) buildBudgetItems(groupID uint, month string) ([]FinanceCategoryBudgetItem, error) {
+	budgets, err := s.financeRepo.ListCategoryBudgets(groupID, month)
+	if err != nil {
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	out := make([]FinanceCategoryBudgetItem, 0, len(budgets))
+	for _, b := range budgets {
+		cat, err := s.financeRepo.FindCategoryByID(groupID, b.CategoryID)
+		if err != nil {
+			continue
+		}
+		out = append(out, FinanceCategoryBudgetItem{
+			CategoryID: b.CategoryID, CategoryName: cat.Name, LimitCents: b.LimitCents,
+		})
+	}
+	return out, nil
 }
 
 func (s *financeService) ListMemberRoles(userID, groupID uint) ([]models.FinanceMemberRole, error) {
