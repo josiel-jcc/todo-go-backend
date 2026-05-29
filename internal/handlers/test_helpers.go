@@ -63,12 +63,14 @@ func migrateTestSchema(db *gorm.DB) error {
 		&models.FinanceCategory{},
 		&models.FinanceTransaction{},
 		&models.FinanceMemberRole{},
+		&models.FinanceCategoryBudget{},
 	)
 }
 
 func financeTruncateTables(db *gorm.DB, useMySQL bool) {
 	if useMySQL {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+		db.Exec("TRUNCATE TABLE finance_category_budgets")
 		db.Exec("TRUNCATE TABLE finance_transactions")
 		db.Exec("TRUNCATE TABLE finance_member_roles")
 		db.Exec("TRUNCATE TABLE finance_categories")
@@ -76,6 +78,7 @@ func financeTruncateTables(db *gorm.DB, useMySQL bool) {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 		return
 	}
+	db.Exec("DELETE FROM finance_category_budgets")
 	db.Exec("DELETE FROM finance_transactions")
 	db.Exec("DELETE FROM finance_member_roles")
 	db.Exec("DELETE FROM finance_categories")
@@ -85,6 +88,7 @@ func financeTruncateTables(db *gorm.DB, useMySQL bool) {
 func truncateTestData(db *gorm.DB, useMySQL bool) {
 	if useMySQL {
 		db.Exec("SET FOREIGN_KEY_CHECKS = 0")
+		db.Exec("TRUNCATE TABLE finance_category_budgets")
 		db.Exec("TRUNCATE TABLE finance_member_roles")
 		db.Exec("TRUNCATE TABLE finance_transactions")
 		db.Exec("TRUNCATE TABLE finance_categories")
@@ -265,6 +269,8 @@ func setupTestRouter(jwtSecret string) *gin.Engine {
 				grp.GET("/transactions", financeHandler.ListTransactions)
 				grp.POST("/transactions", financeHandler.CreateTransaction)
 				grp.GET("/dashboard", financeHandler.GetDashboard)
+				grp.GET("/budgets", financeHandler.ListCategoryBudgets)
+				grp.PUT("/budgets", financeHandler.SetCategoryBudgets)
 				grp.PUT("/members/:userId/role", financeHandler.UpdateMemberRole)
 			}
 		}

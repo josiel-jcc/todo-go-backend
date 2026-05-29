@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"errors"
 	"time"
 
 	"todo-go-backend/internal/database"
@@ -41,6 +42,9 @@ type FinanceRepository interface {
 	ListMemberRoles(groupID uint) ([]models.FinanceMemberRole, error)
 	IsGroupMember(groupID, userID uint) (bool, error)
 	GetGroupCreatedBy(groupID uint) (uint, error)
+
+	ListCategoryBudgets(groupID uint, month string) ([]models.FinanceCategoryBudget, error)
+	UpsertCategoryBudget(budget *models.FinanceCategoryBudget) error
 }
 
 // FinanceTransactionFilter scopes transaction queries.
@@ -355,4 +359,27 @@ func (r *financeRepository) GetGroupCreatedBy(groupID uint) (uint, error) {
 		return 0, err
 	}
 	return g.CreatedBy, nil
+}
+
+func (r *financeRepository) ListCategoryBudgets(groupID uint, month string) ([]models.FinanceCategoryBudget, error) {
+	var budgets []models.FinanceCategoryBudget
+	if err := database.DB.Where("group_id = ? AND month = ?", groupID, month).Find(&budgets).Error; err != nil {
+		return nil, err
+	}
+	return budgets, nil
+}
+
+func (r *financeRepository) UpsertCategoryBudget(budget *models.FinanceCategoryBudget) error {
+	var existing models.FinanceCategoryBudget
+	err := database.DB.Where("group_id = ? AND category_id = ? AND month = ?",
+		budget.GroupID, budget.CategoryID, budget.Month).First(&existing).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return database.DB.Create(budget).Error
+		}
+		return err
+	}
+	existing.LimitCents = budget.LimitCents
+	existing.CreatedBy = budget.CreatedBy
+	return database.DB.Save(&existing).Error
 }
