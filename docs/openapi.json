@@ -88,6 +88,16 @@
 						"example": 10,
 						"type": "integer"
 					},
+					"recurrence_rule": {
+						"description": "Optional: daily, weekly, or monthly repetition",
+						"enum": [
+							"daily",
+							"weekly",
+							"monthly"
+						],
+						"example": "weekly",
+						"type": "string"
+					},
 					"tag_ids": {
 						"description": "Optional: IDs of tags to associate",
 						"items": {
@@ -513,6 +523,17 @@
 						"example": 15,
 						"type": "integer"
 					},
+					"recurrence_rule": {
+						"description": "Optional: daily, weekly, monthly; null removes recurrence",
+						"enum": [
+							"daily",
+							"weekly",
+							"monthly"
+						],
+						"example": "daily",
+						"type": "string",
+						"nullable": true
+					},
 					"tag_ids": {
 						"description": "Optional: nil = no change, [] = remove all, [1,2] = set tags",
 						"items": {
@@ -896,6 +917,13 @@
 						"description": "Minutes before due_date for reminder; null inherits user default",
 						"type": "integer"
 					},
+					"recurrence_rule": {
+						"$ref": "#/components/schemas/models.RecurrenceRule"
+					},
+					"recurrence_next_due": {
+						"description": "Next scheduled occurrence for recurring tasks",
+						"type": "string"
+					},
 					"shared_with": {
 						"description": "Users with whom the task is shared (no limit)",
 						"items": {
@@ -946,6 +974,19 @@
 					"user_id"
 				],
 				"type": "object"
+			},
+			"models.RecurrenceRule": {
+				"enum": [
+					"daily",
+					"weekly",
+					"monthly"
+				],
+				"type": "string",
+				"x-enum-varnames": [
+					"RecurrenceDaily",
+					"RecurrenceWeekly",
+					"RecurrenceMonthly"
+				]
 			},
 			"models.TaskType": {
 				"enum": [

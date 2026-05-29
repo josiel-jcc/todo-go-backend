@@ -134,9 +134,16 @@ Este documento apresenta o plano de melhorias futuras para o projeto, organizado
 - **Descrição**: Criar templates reutilizáveis de tarefas
 - **Benefícios**: Agilidade na criação de tarefas recorrentes
 
-#### 13. Recorrência de Tarefas
-- **Descrição**: Tarefas que se repetem automaticamente
-- **Benefícios**: Para tarefas periódicas (diárias, semanais, mensais)
+#### 13. Recorrência de Tarefas ✅
+- **Descrição**: Tarefas que se repetem automaticamente (diária, semanal, mensal)
+- **Benefícios**: Para tarefas periódicas sem recriar manualmente a cada ciclo
+- **Status**: ✅ **Implementado**
+- **Implementação**:
+  - ✅ Campos `recurrence_rule` (`daily`, `weekly`, `monthly`) e `recurrence_next_due` no modelo `Task`
+  - ✅ `POST /api/v1/tasks` e `PUT /api/v1/tasks/{id}` aceitam `recurrence_rule`; `null` na edição remove a recorrência
+  - ✅ Ao marcar `completed: true` em tarefa recorrente, reagenda `due_date` e reabre a tarefa (não permanece concluída)
+  - ✅ Limpa histórico de lembretes enviados quando a data muda por recorrência
+  - ✅ Documentado no OpenAPI (Swagger)
 
 #### 14. Compartilhamento de Tarefas ✅
 - **Descrição**: Compartilhar tarefas com outros usuários para visualização e edição colaborativa (dono da tarefa = `user_id` da tarefa; apenas o dono adiciona/remove compartilhados)

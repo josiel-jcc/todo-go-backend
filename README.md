@@ -26,6 +26,7 @@ API RESTful para gerenciamento de tarefas desenvolvida em Go, com autenticação
 - ✅ Filtros por tipo e status de conclusão
 - ✅ Sistema de Tags para categorizar tarefas
 - ✅ Comentários em tarefas
+- ✅ Recorrência de tarefas (diária, semanal, mensal; reagenda ao concluir)
 - ✅ Notificações por Email, Telegram e Web Push (PWA)
 - ✅ Grupos, convites e notificações in-app
 - ✅ Exportação e exclusão de conta (LGPD)
@@ -188,11 +189,14 @@ Content-Type: application/json
   "description": "Limpar todos os cômodos",
   "type": "casa",
   "due_date": "2024-12-31T23:59:59Z",
+  "recurrence_rule": "weekly",
   "user_id": 2  // Opcional: criar tarefa para outro usuário
 }
 ```
 
 **Tipos válidos:** `casa`, `trabalho`, `lazer`, `saude`
+
+**Recorrência (opcional):** `recurrence_rule` = `daily`, `weekly` ou `monthly` (exige `due_date`). A resposta inclui `recurrence_next_due`. Ao marcar `completed: true`, tarefas recorrentes são reabertas com a próxima data em vez de permanecer concluídas.
 
 #### Listar tarefas
 ```http
@@ -221,9 +225,12 @@ Content-Type: application/json
 {
   "title": "Título atualizado",
   "completed": true,
-  "due_date": "2024-12-31T23:59:59Z"
+  "due_date": "2024-12-31T23:59:59Z",
+  "recurrence_rule": "daily"
 }
 ```
+
+Envie `"recurrence_rule": null` para remover a recorrência. Em tarefas com `recurrence_rule` definido, `completed: true` reagenda e mantém `completed: false`.
 
 #### Deletar tarefa
 ```http

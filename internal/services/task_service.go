@@ -27,6 +27,7 @@ type CreateTaskRequest struct {
 	Priority    *models.Priority // Optional: task priority
 	DueDate               *time.Time
 	ReminderMinutesBefore *int
+	RecurrenceRule        *models.RecurrenceRule
 	UserID                *uint  // Optional: ID of the user to whom the task will be assigned
 	TagIDs                []uint // Optional: IDs of tags to associate with the task
 }
@@ -40,7 +41,8 @@ type UpdateTaskRequest struct {
 	DueDate                 *time.Time
 	ReminderMinutesBefore   *int
 	Completed               *bool
-	TagIDs                  *[]uint // Optional: IDs of tags to associate with the task (nil = no change, empty = remove all)
+	RecurrenceRule          **models.RecurrenceRule // nil = no change; pointer to nil clears recurrence
+	TagIDs                  *[]uint                 // Optional: IDs of tags to associate with the task (nil = no change, empty = remove all)
 }
 
 // TaskFilters defines filters for task search
@@ -116,6 +118,15 @@ func (s *taskService) Create(userID uint, req *CreateTaskRequest) (*models.Task,
 		return nil, errors.NewInvalidInputError("reminder_minutes_before must be one of: 5, 10, 15, 30, 60")
 	}
 
+	if req.RecurrenceRule != nil {
+		if !IsValidRecurrenceRule(*req.RecurrenceRule) {
+			return nil, errors.NewInvalidInputError("Invalid recurrence_rule. Must be one of: daily, weekly, monthly")
+		}
+		if req.DueDate == nil {
+			return nil, errors.NewInvalidInputError("due_date is required when recurrence_rule is set")
+		}
+	}
+
 	// Determine target user
 	targetUserID := userID
 	if req.UserID != nil {
@@ -157,10 +168,15 @@ func (s *taskService) Create(userID uint, req *CreateTaskRequest) (*models.Task,
 		Priority:              priority,
 		DueDate:               req.DueDate,
 		ReminderMinutesBefore: req.ReminderMinutesBefore,
+		RecurrenceRule:        req.RecurrenceRule,
 		UserID:                targetUserID,
 		AssignedBy:            assignedBy,
 		Completed:             false,
 		Tags:                  tags,
+	}
+	if req.RecurrenceRule != nil && req.DueDate != nil {
+		nextDue := *req.DueDate
+		task.RecurrenceNextDue = &nextDue
 	}
 
 	if err := s.taskRepo.Create(task); err != nil {
@@ -366,6 +382,10 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 	}
 	if req.DueDate != nil {
 		task.DueDate = req.DueDate
+		if task.RecurrenceRule != nil {
+			nextDue := *req.DueDate
+			task.RecurrenceNextDue = &nextDue
+		}
 	}
 	if req.ReminderMinutesBefore != nil {
 		if !IsValidReminderMinutes(*req.ReminderMinutesBefore) {
@@ -374,14 +394,44 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 		task.ReminderMinutesBefore = req.ReminderMinutesBefore
 	}
 	wasCompleted := task.Completed
+	completingRecurring := false
 	if req.Completed != nil {
 		if *req.Completed && !task.Completed {
-			now := time.Now()
-			task.CompletedAt = &now
+			if task.RecurrenceRule != nil {
+				completingRecurring = true
+				if err := s.applyRecurrenceOnComplete(task); err != nil {
+					return nil, err
+				}
+			} else {
+				now := time.Now()
+				task.CompletedAt = &now
+				task.Completed = true
+			}
 		} else if !*req.Completed {
 			task.CompletedAt = nil
+			task.Completed = false
+		} else {
+			task.Completed = *req.Completed
 		}
-		task.Completed = *req.Completed
+	}
+
+	if req.RecurrenceRule != nil {
+		if *req.RecurrenceRule == nil {
+			task.RecurrenceRule = nil
+			task.RecurrenceNextDue = nil
+		} else {
+			if !IsValidRecurrenceRule(**req.RecurrenceRule) {
+				return nil, errors.NewInvalidInputError("Invalid recurrence_rule. Must be one of: daily, weekly, monthly")
+			}
+			rule := **req.RecurrenceRule
+			task.RecurrenceRule = &rule
+			base := task.DueDate
+			if base == nil {
+				return nil, errors.NewInvalidInputError("due_date is required when recurrence_rule is set")
+			}
+			nextDue := *base
+			task.RecurrenceNextDue = &nextDue
+		}
 	}
 
 	// Update tags if provided
@@ -402,7 +452,7 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 		}
 	}
 
-	if dueDateChanged(oldDueDate, task.DueDate) || reminderMinutesChanged(oldReminderMinutes, task.ReminderMinutesBefore) {
+	if completingRecurring || dueDateChanged(oldDueDate, task.DueDate) || reminderMinutesChanged(oldReminderMinutes, task.ReminderMinutesBefore) {
 		if err := s.notificationRepo.DeleteByTaskID(taskID); err != nil {
 			return nil, errors.NewInternalServerError(err)
 		}
@@ -418,7 +468,7 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 		return nil, errors.NewInternalServerError(err)
 	}
 
-	if req.Completed != nil && *req.Completed && !wasCompleted && s.activityNotifications != nil {
+	if req.Completed != nil && *req.Completed && !wasCompleted && !completingRecurring && s.activityNotifications != nil {
 		completerName := ""
 		if completer, err := s.userRepo.FindByID(userID); err == nil {
 			completerName = completer.Username
@@ -430,6 +480,23 @@ func (s *taskService) Update(userID, taskID uint, req *UpdateTaskRequest) (*mode
 	}
 
 	return task, nil
+}
+
+func (s *taskService) applyRecurrenceOnComplete(task *models.Task) error {
+	if task.RecurrenceRule == nil {
+		return nil
+	}
+	base := task.DueDate
+	if base == nil {
+		return errors.NewInvalidInputError("due_date is required for recurring tasks")
+	}
+	now := time.Now()
+	next := AdvanceToFutureDue(*base, *task.RecurrenceRule, now)
+	task.DueDate = &next
+	task.RecurrenceNextDue = &next
+	task.Completed = false
+	task.CompletedAt = nil
+	return nil
 }
 
 func (s *taskService) Delete(userID, taskID uint) error {
