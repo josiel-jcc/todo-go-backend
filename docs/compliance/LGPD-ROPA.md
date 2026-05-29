@@ -4,7 +4,7 @@ Template conforme Art. 37 da LGPD. Preencher e manter atualizado pela organizaç
 
 **Controlador:** [RAZAO_SOCIAL] — CNPJ [CNPJ]  
 **Encarregado:** [EMAIL_PRIVACIDADE]  
-**Última revisão:** 2026-05-27
+**Última revisão:** 2026-05-29
 
 > **Fonte canônica:** `todo-frontend/docs/compliance/LGPD-ROPA.md` (sincronizar cópias no monorepo).
 
@@ -85,7 +85,24 @@ Template conforme Art. 37 da LGPD. Preencher e manter atualizado pela organizaç
 
 ---
 
-## Operação 7 — Logs e segurança
+## Operação 7 — Gestão financeira do lar familiar (**planejado / MVP**)
+
+| Campo | Valor |
+|-------|-------|
+| Finalidade | Orçamento doméstico: contas, categorias e lançamentos (receitas/despesas) no âmbito do grupo familiar (household) |
+| Categorias de titulares | Membros do grupo com acesso ao módulo finanças |
+| Dados pessoais | Dados **sensíveis** (Art. 5, II): valores, descrições e datas de lançamentos; nomes de contas e categorias; visibilidade (`private` / `household`); papéis financeiros (`admin`, `editor`, `viewer`) |
+| Categorias de destinatários | Hospedagem (BD); outros membros do mesmo `group_id` conforme visibilidade e papel |
+| Compartilhamento | Lançamentos `household` visíveis a membros com papel `viewer` ou superior; lançamentos `private` apenas ao titular criador |
+| Transferência internacional | [SIM/NAO — detalhar] (mesma hospedagem das demais operações) |
+| Base legal | Execução de contrato (Art. 7, V) |
+| Medidas de segurança | Autorização por grupo e papel financeiro; segregação de bounded context (`/api/v1/finance/*`); ver [SECURITY.md](./SECURITY.md) e [ADR 0001](../adr/0001-finance-bounded-context.md) |
+| Prazo de retenção | Vigência da conta e do grupo; cascata em [DATA-RETENTION.md](./DATA-RETENTION.md) § 3.1 |
+| Status | Tabelas `financial_accounts`, `finance_categories`, `finance_transactions` — **não implementadas**; documentação antecipada para conformidade |
+
+---
+
+## Operação 8 — Logs e segurança
 
 | Campo | Valor |
 |-------|-------|
@@ -102,3 +119,4 @@ Template conforme Art. 37 da LGPD. Preencher e manter atualizado pela organizaç
 |------|-----------|-------------|
 | [DATA] | Criação do ROPA | [NOME] |
 | 2026-05-27 | Grupos, Web Push, lembretes por minuto, sincronização com implementação | [NOME] |
+| 2026-05-29 | Operação 7 — finanças do lar (planejado / MVP); renumeração de logs para Operação 8 | [NOME] |
