@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -242,12 +243,13 @@ func (s *financeService) seedDefaults(groupID, userID uint) error {
 		return apperrors.NewInternalServerError(err)
 	}
 
-	count, err := s.financeRepo.CountCategoriesByGroup(groupID)
+	existing, err := s.financeRepo.ListCategories(groupID, nil)
 	if err != nil {
 		return apperrors.NewInternalServerError(err)
 	}
-	if count > 0 {
-		return nil
+	existingKeys := make(map[string]bool, len(existing))
+	for _, c := range existing {
+		existingKeys[financeCategoryDedupeKey(c.Kind, c.Name)] = true
 	}
 
 	now := time.Now()
@@ -259,10 +261,57 @@ func (s *financeService) seedDefaults(groupID, userID uint) error {
 		{GroupID: groupID, Name: "Transporte", Kind: models.FinanceCategoryExpense, IsSystem: true, CreatedAt: now, UpdatedAt: now},
 		{GroupID: groupID, Name: "Outras despesas", Kind: models.FinanceCategoryExpense, IsSystem: true, CreatedAt: now, UpdatedAt: now},
 	}
-	if err := s.financeRepo.CreateCategories(seeds); err != nil {
+	var toCreate []models.FinanceCategory
+	for _, seed := range seeds {
+		if !existingKeys[financeCategoryDedupeKey(seed.Kind, seed.Name)] {
+			toCreate = append(toCreate, seed)
+		}
+	}
+	if len(toCreate) == 0 {
+		return nil
+	}
+	if err := s.financeRepo.CreateCategories(toCreate); err != nil {
 		return apperrors.NewInternalServerError(err)
 	}
 	return nil
+}
+
+func financeCategoryDedupeKey(kind models.FinanceCategoryKind, name string) string {
+	return string(kind) + "\x00" + strings.ToLower(strings.TrimSpace(name))
+}
+
+func dedupeFinanceCategories(cats []models.FinanceCategory) []models.FinanceCategory {
+	byID := make(map[uint]models.FinanceCategory, len(cats))
+	for _, c := range cats {
+		if _, ok := byID[c.ID]; !ok {
+			byID[c.ID] = c
+		}
+	}
+	byKey := make(map[string]models.FinanceCategory, len(byID))
+	for _, c := range byID {
+		key := financeCategoryDedupeKey(c.Kind, c.Name)
+		existing, ok := byKey[key]
+		if !ok {
+			byKey[key] = c
+			continue
+		}
+		if c.IsSystem && !existing.IsSystem {
+			byKey[key] = c
+		} else if c.IsSystem == existing.IsSystem && c.ID < existing.ID {
+			byKey[key] = c
+		}
+	}
+	out := make([]models.FinanceCategory, 0, len(byKey))
+	for _, c := range byKey {
+		out = append(out, c)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].IsSystem != out[j].IsSystem {
+			return out[i].IsSystem
+		}
+		return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name)
+	})
+	return out
 }
 
 func (s *financeService) ListAccounts(userID, groupID uint) ([]AccountWithBalance, error) {
@@ -390,7 +439,7 @@ func (s *financeService) ListCategories(userID, groupID uint, kind *string) ([]m
 	if err != nil {
 		return nil, apperrors.NewInternalServerError(err)
 	}
-	return cats, nil
+	return dedupeFinanceCategories(cats), nil
 }
 
 func (s *financeService) CreateCategory(userID, groupID uint, req CreateFinanceCategoryRequest) (*models.FinanceCategory, error) {
