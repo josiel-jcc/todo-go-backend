@@ -210,6 +210,29 @@ flowchart LR
 
 ---
 
+## Trilha Finanças (hub familiar)
+
+Trilha paralela ao roadmap de tarefas, reutilizando grupos e papéis para um hub financeiro familiar.
+
+### Finanças — MVP (paralelo ao Ciclo 2)
+
+- Contas, categorias, lançamentos, dashboard mensal por grupo
+- Papéis financeiros e visibilidade private/household
+
+| Esforço | Impacto |
+|---------|---------|
+| Alto | Alto |
+
+### Finanças — V2
+
+- Cartões, faturas, parcelas, orçamento por categoria, metas
+
+### Finanças — V3
+
+- Projeções, tendências, alertas de orçamento
+
+---
+
 ## Como escolher o próximo item
 
 | Foco | Começar por |
@@ -218,6 +241,7 @@ flowchart LR
 | Colaboração em equipe | Histórico, @menção, papéis no grupo, anexos |
 | Sair de testes → produção | Health, logs, rate limit, refresh tokens, índices DB |
 | Diferencial mobile | Offline PWA, push refinado, swipe para concluir |
+| Foco finanças familiares | MVP finanças + health check |
 
 ---
 
@@ -237,3 +261,4 @@ flowchart LR
 |------|-----------|
 | 2026-05-27 | Criação do documento a partir da análise de melhorias e priorização |
 | 2026-05-29 | Recorrência de tarefas (item 4) marcada como implementada |
+| 2026-05-29 | Trilha Finanças (hub familiar): MVP, V2 e V3; linha na tabela de foco |
