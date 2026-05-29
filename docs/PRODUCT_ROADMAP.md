@@ -2,7 +2,7 @@
 
 Documento de referência para planejamento de funcionalidades e melhorias técnicas. Complementa o [ROADMAP.md](../ROADMAP.md) (foco em implementação técnica do backend).
 
-**Última atualização:** 2026-05-27
+**Última atualização:** 2026-05-29
 
 ---
 
@@ -15,6 +15,7 @@ O projeto já cobre o núcleo de um app de tarefas colaborativo:
 - Grupos com convites e colaboração restrita
 - Notificações: e-mail, Telegram, Web Push (PWA) e in-app
 - Lembretes com horário (`task_reminder`, offset configurável)
+- Recorrência de tarefas (`recurrence_rule`, `recurrence_next_due`; reagenda ao concluir)
 - Base de conformidade LGPD (exportação, exclusão, políticas)
 
 O próximo passo natural é **fechar lacunas de produto** e **endurecer operação** antes de features muito grandes.
@@ -183,7 +184,7 @@ Detalhes de implementação: ver [ROADMAP.md](../ROADMAP.md).
 
 ### Ciclo 3 — Hábito diário (4–6 semanas)
 
-1. Recorrência de tarefas
+1. Recorrência de tarefas ✅
 2. Vista Kanban leve
 3. Histórico de alterações na tarefa
 
@@ -213,7 +214,7 @@ flowchart LR
 
 | Foco | Começar por |
 |------|-------------|
-| Uso familiar (“Os de casa”) | Recorrência, subtarefas, notif. de comentário, adiar tarefa |
+| Uso familiar (“Os de casa”) | Subtarefas, templates, adiar tarefa |
 | Colaboração em equipe | Histórico, @menção, papéis no grupo, anexos |
 | Sair de testes → produção | Health, logs, rate limit, refresh tokens, índices DB |
 | Diferencial mobile | Offline PWA, push refinado, swipe para concluir |
@@ -235,3 +236,4 @@ flowchart LR
 | Data | Alteração |
 |------|-----------|
 | 2026-05-27 | Criação do documento a partir da análise de melhorias e priorização |
+| 2026-05-29 | Recorrência de tarefas (item 4) marcada como implementada |

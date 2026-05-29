@@ -260,6 +260,10 @@ Para remover o Telegram:
 
 Ao criar ou editar uma tarefa, envie `reminder_minutes_before` (opcional). Se omitido, usa o padrão do usuário; `null` na edição remove o override.
 
+### Tarefas recorrentes
+
+Tarefas com `recurrence_rule` (`daily`, `weekly`, `monthly`) reagemem ao ser concluídas: `due_date` e `recurrence_next_due` avançam para a próxima ocorrência e a tarefa volta a `completed: false`. Nesse fluxo o backend **apaga o histórico de lembretes** já enviados para a data anterior, para que o lembrete da nova `due_date` possa ser disparado normalmente.
+
 ---
 
 ## 🧪 Testando
