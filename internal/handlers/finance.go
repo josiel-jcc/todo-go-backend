@@ -528,3 +528,134 @@ func (h *FinanceHandler) SetCategoryBudgets(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, result)
 }
+
+type createGoalBody struct {
+	Name         string  `json:"name" binding:"required,min=1,max=120"`
+	TargetCents  int64   `json:"target_cents" binding:"required"`
+	CurrentCents int64   `json:"current_cents"`
+	TargetDate   *string `json:"target_date"`
+}
+
+type updateGoalBody struct {
+	Name         *string `json:"name"`
+	TargetCents  *int64  `json:"target_cents"`
+	CurrentCents *int64  `json:"current_cents"`
+	TargetDate   *string `json:"target_date"`
+	IsArchived   *bool   `json:"is_archived"`
+}
+
+func parseOptionalDate(s *string) (*time.Time, error) {
+	if s == nil || *s == "" {
+		return nil, nil
+	}
+	t, err := parseDate(*s)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+func (h *FinanceHandler) ListGoals(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	includeArchived := c.Query("include_archived") == "true"
+	goals, err := h.financeService.ListGoals(userID, groupID, includeArchived)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, goals)
+}
+
+func (h *FinanceHandler) GetGoal(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	goalID, err := parseUintParam(c, "goalId")
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	goal, err := h.financeService.GetGoal(userID, groupID, goalID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, goal)
+}
+
+func (h *FinanceHandler) CreateGoal(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	var body createGoalBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		handleValidationError(c, err)
+		return
+	}
+	targetDate, err := parseOptionalDate(body.TargetDate)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	goal, err := h.financeService.CreateGoal(userID, groupID, services.CreateFinanceGoalRequest{
+		Name: body.Name, TargetCents: body.TargetCents, CurrentCents: body.CurrentCents, TargetDate: targetDate,
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, goal)
+}
+
+func (h *FinanceHandler) UpdateGoal(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	goalID, err := parseUintParam(c, "goalId")
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	var body updateGoalBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		handleValidationError(c, err)
+		return
+	}
+	targetDate, err := parseOptionalDate(body.TargetDate)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	goal, err := h.financeService.UpdateGoal(userID, groupID, goalID, services.UpdateFinanceGoalRequest{
+		Name: body.Name, TargetCents: body.TargetCents, CurrentCents: body.CurrentCents,
+		TargetDate: targetDate, IsArchived: body.IsArchived,
+	})
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, goal)
+}
+
+func (h *FinanceHandler) DeleteGoal(c *gin.Context) {
+	userID, groupID, ok := h.groupIDParam(c)
+	if !ok {
+		return
+	}
+	goalID, err := parseUintParam(c, "goalId")
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	if err := h.financeService.DeleteGoal(userID, groupID, goalID); err != nil {
+		handleError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

@@ -209,6 +209,13 @@ func main() {
 				grp.GET("/dashboard", financeHandler.GetDashboard)
 				grp.GET("/budgets", financeHandler.ListCategoryBudgets)
 				grp.PUT("/budgets", financeHandler.SetCategoryBudgets)
+
+				grp.GET("/goals", financeHandler.ListGoals)
+				grp.POST("/goals", financeHandler.CreateGoal)
+				grp.GET("/goals/:goalId", financeHandler.GetGoal)
+				grp.PUT("/goals/:goalId", financeHandler.UpdateGoal)
+				grp.DELETE("/goals/:goalId", financeHandler.DeleteGoal)
+
 				grp.GET("/members/roles", financeHandler.ListMemberRoles)
 				grp.PUT("/members/:userId/role", financeHandler.UpdateMemberRole)
 			}
