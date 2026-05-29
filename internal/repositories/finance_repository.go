@@ -45,6 +45,12 @@ type FinanceRepository interface {
 
 	ListCategoryBudgets(groupID uint, month string) ([]models.FinanceCategoryBudget, error)
 	UpsertCategoryBudget(budget *models.FinanceCategoryBudget) error
+
+	ListGoals(groupID uint, includeArchived bool) ([]models.FinanceGoal, error)
+	FindGoalByID(groupID, goalID uint) (*models.FinanceGoal, error)
+	CreateGoal(goal *models.FinanceGoal) error
+	UpdateGoal(goal *models.FinanceGoal) error
+	SoftDeleteGoal(groupID, goalID uint) error
 }
 
 // FinanceTransactionFilter scopes transaction queries.
@@ -382,4 +388,36 @@ func (r *financeRepository) UpsertCategoryBudget(budget *models.FinanceCategoryB
 	existing.LimitCents = budget.LimitCents
 	existing.CreatedBy = budget.CreatedBy
 	return database.DB.Save(&existing).Error
+}
+
+func (r *financeRepository) ListGoals(groupID uint, includeArchived bool) ([]models.FinanceGoal, error) {
+	var goals []models.FinanceGoal
+	q := database.DB.Where("group_id = ?", groupID)
+	if !includeArchived {
+		q = q.Where("is_archived = ?", false)
+	}
+	if err := q.Order("is_archived ASC, target_date IS NULL, target_date ASC, name ASC").Find(&goals).Error; err != nil {
+		return nil, err
+	}
+	return goals, nil
+}
+
+func (r *financeRepository) FindGoalByID(groupID, goalID uint) (*models.FinanceGoal, error) {
+	var goal models.FinanceGoal
+	if err := database.DB.Where("group_id = ? AND id = ?", groupID, goalID).First(&goal).Error; err != nil {
+		return nil, err
+	}
+	return &goal, nil
+}
+
+func (r *financeRepository) CreateGoal(goal *models.FinanceGoal) error {
+	return database.DB.Create(goal).Error
+}
+
+func (r *financeRepository) UpdateGoal(goal *models.FinanceGoal) error {
+	return database.DB.Save(goal).Error
+}
+
+func (r *financeRepository) SoftDeleteGoal(groupID, goalID uint) error {
+	return database.DB.Where("group_id = ? AND id = ?", groupID, goalID).Delete(&models.FinanceGoal{}).Error
 }

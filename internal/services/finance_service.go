@@ -35,6 +35,13 @@ type FinanceService interface {
 	GetDashboard(userID, groupID uint, month string) (*FinanceDashboard, error)
 	ListCategoryBudgets(userID, groupID uint, month string) ([]FinanceCategoryBudgetItem, error)
 	SetCategoryBudgets(userID, groupID uint, month string, items []SetCategoryBudgetItem) ([]FinanceCategoryBudgetItem, error)
+
+	ListGoals(userID, groupID uint, includeArchived bool) ([]FinanceGoalItem, error)
+	GetGoal(userID, groupID, goalID uint) (*FinanceGoalItem, error)
+	CreateGoal(userID, groupID uint, req CreateFinanceGoalRequest) (*FinanceGoalItem, error)
+	UpdateGoal(userID, groupID, goalID uint, req UpdateFinanceGoalRequest) (*FinanceGoalItem, error)
+	DeleteGoal(userID, groupID, goalID uint) error
+
 	ListMemberRoles(userID, groupID uint) ([]models.FinanceMemberRole, error)
 	UpdateMemberRole(userID, groupID, targetUserID uint, role models.FinanceMemberRoleName) (*models.FinanceMemberRole, error)
 }
@@ -82,6 +89,28 @@ type FinanceCategoryBudgetItem struct {
 type SetCategoryBudgetItem struct {
 	CategoryID uint
 	LimitCents int64
+}
+
+// FinanceGoalItem is a savings goal with computed progress.
+type FinanceGoalItem struct {
+	models.FinanceGoal
+	PercentComplete float64 `json:"percent_complete"`
+	IsCompleted     bool    `json:"is_completed"`
+}
+
+type CreateFinanceGoalRequest struct {
+	Name         string
+	TargetCents  int64
+	CurrentCents int64
+	TargetDate   *time.Time
+}
+
+type UpdateFinanceGoalRequest struct {
+	Name         *string
+	TargetCents  *int64
+	CurrentCents *int64
+	TargetDate   *time.Time
+	IsArchived   *bool
 }
 
 type CreateFinanceAccountRequest struct {
@@ -769,6 +798,137 @@ func (s *financeService) buildBudgetItems(groupID uint, month string) ([]Finance
 		})
 	}
 	return out, nil
+}
+
+func goalProgress(goal *models.FinanceGoal) FinanceGoalItem {
+	item := FinanceGoalItem{FinanceGoal: *goal}
+	if goal.TargetCents > 0 {
+		pct := float64(goal.CurrentCents) / float64(goal.TargetCents) * 100
+		if pct > 100 {
+			pct = 100
+		}
+		item.PercentComplete = pct
+	}
+	item.IsCompleted = goal.CurrentCents >= goal.TargetCents && goal.TargetCents > 0
+	return item
+}
+
+func validateGoalAmounts(targetCents, currentCents int64) error {
+	if targetCents <= 0 {
+		return apperrors.NewInvalidInputError("target must be positive")
+	}
+	if currentCents < 0 {
+		return apperrors.NewInvalidInputError("current amount must be non-negative")
+	}
+	return nil
+}
+
+func (s *financeService) ListGoals(userID, groupID uint, includeArchived bool) ([]FinanceGoalItem, error) {
+	if _, err := s.EnsureAccess(userID, groupID); err != nil {
+		return nil, err
+	}
+	goals, err := s.financeRepo.ListGoals(groupID, includeArchived)
+	if err != nil {
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	out := make([]FinanceGoalItem, 0, len(goals))
+	for i := range goals {
+		out = append(out, goalProgress(&goals[i]))
+	}
+	return out, nil
+}
+
+func (s *financeService) GetGoal(userID, groupID, goalID uint) (*FinanceGoalItem, error) {
+	if _, err := s.EnsureAccess(userID, groupID); err != nil {
+		return nil, err
+	}
+	goal, err := s.financeRepo.FindGoalByID(groupID, goalID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.NewTaskNotFoundError()
+		}
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	item := goalProgress(goal)
+	return &item, nil
+}
+
+func (s *financeService) CreateGoal(userID, groupID uint, req CreateFinanceGoalRequest) (*FinanceGoalItem, error) {
+	if _, err := s.requireRole(userID, groupID, models.FinanceRoleEditor); err != nil {
+		return nil, err
+	}
+	if err := validateGoalAmounts(req.TargetCents, req.CurrentCents); err != nil {
+		return nil, err
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, apperrors.NewInvalidInputError("name is required")
+	}
+	goal := &models.FinanceGoal{
+		GroupID: groupID, Name: name, TargetCents: req.TargetCents,
+		CurrentCents: req.CurrentCents, TargetDate: req.TargetDate, CreatedBy: userID,
+	}
+	if err := s.financeRepo.CreateGoal(goal); err != nil {
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	item := goalProgress(goal)
+	return &item, nil
+}
+
+func (s *financeService) UpdateGoal(userID, groupID, goalID uint, req UpdateFinanceGoalRequest) (*FinanceGoalItem, error) {
+	if _, err := s.requireRole(userID, groupID, models.FinanceRoleEditor); err != nil {
+		return nil, err
+	}
+	goal, err := s.financeRepo.FindGoalByID(groupID, goalID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.NewTaskNotFoundError()
+		}
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if name == "" {
+			return nil, apperrors.NewInvalidInputError("name is required")
+		}
+		goal.Name = name
+	}
+	if req.TargetCents != nil {
+		goal.TargetCents = *req.TargetCents
+	}
+	if req.CurrentCents != nil {
+		goal.CurrentCents = *req.CurrentCents
+	}
+	if req.TargetDate != nil {
+		goal.TargetDate = req.TargetDate
+	}
+	if req.IsArchived != nil {
+		goal.IsArchived = *req.IsArchived
+	}
+	if err := validateGoalAmounts(goal.TargetCents, goal.CurrentCents); err != nil {
+		return nil, err
+	}
+	if err := s.financeRepo.UpdateGoal(goal); err != nil {
+		return nil, apperrors.NewInternalServerError(err)
+	}
+	item := goalProgress(goal)
+	return &item, nil
+}
+
+func (s *financeService) DeleteGoal(userID, groupID, goalID uint) error {
+	if _, err := s.requireRole(userID, groupID, models.FinanceRoleEditor); err != nil {
+		return err
+	}
+	if _, err := s.financeRepo.FindGoalByID(groupID, goalID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apperrors.NewTaskNotFoundError()
+		}
+		return apperrors.NewInternalServerError(err)
+	}
+	if err := s.financeRepo.SoftDeleteGoal(groupID, goalID); err != nil {
+		return apperrors.NewInternalServerError(err)
+	}
+	return nil
 }
 
 func (s *financeService) ListMemberRoles(userID, groupID uint) ([]models.FinanceMemberRole, error) {
