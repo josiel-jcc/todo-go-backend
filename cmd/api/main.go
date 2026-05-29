@@ -72,6 +72,8 @@ func main() {
 	taskService := services.NewTaskService(taskRepo, userRepo, tagRepo, groupService, notificationRepo, activityNotificationService)
 	statsRepo := repositories.NewStatsRepository()
 	statsService := services.NewStatsService(statsRepo)
+	financeRepo := repositories.NewFinanceRepository()
+	financeService := services.NewFinanceService(financeRepo)
 	tagService := services.NewTagService(tagRepo)
 	commentService := services.NewCommentService(commentRepo, taskRepo, activityNotificationService)
 
@@ -102,7 +104,7 @@ func main() {
 	userHandler := handlers.NewUserHandler(notificationService, userRepo, userService, groupService)
 	groupHandler := handlers.NewGroupHandler(groupService)
 	groupInvitationHandler := handlers.NewGroupInvitationHandler(groupService)
-	financeHandler := handlers.NewFinanceHandler(groupService)
+	financeHandler := handlers.NewFinanceHandler(financeService, groupService)
 	userNotificationHandler := handlers.NewUserNotificationHandler(userNotificationService)
 	pushNotificationHandler := handlers.NewPushNotificationHandler(pushService, pushSubscriptionRepo)
 
@@ -184,7 +186,30 @@ func main() {
 
 		finance := protected.Group("/finance")
 		{
-			finance.GET("/groups/:groupId/health", financeHandler.Health)
+			grp := finance.Group("/groups/:groupId")
+			{
+				grp.GET("/health", financeHandler.Health)
+				grp.GET("/accounts", financeHandler.ListAccounts)
+				grp.POST("/accounts", financeHandler.CreateAccount)
+				grp.GET("/accounts/:accountId", financeHandler.GetAccount)
+				grp.PUT("/accounts/:accountId", financeHandler.UpdateAccount)
+				grp.DELETE("/accounts/:accountId", financeHandler.DeleteAccount)
+
+				grp.GET("/categories", financeHandler.ListCategories)
+				grp.POST("/categories", financeHandler.CreateCategory)
+				grp.PUT("/categories/:categoryId", financeHandler.UpdateCategory)
+				grp.DELETE("/categories/:categoryId", financeHandler.DeleteCategory)
+
+				grp.GET("/transactions", financeHandler.ListTransactions)
+				grp.POST("/transactions", financeHandler.CreateTransaction)
+				grp.GET("/transactions/:transactionId", financeHandler.GetTransaction)
+				grp.PUT("/transactions/:transactionId", financeHandler.UpdateTransaction)
+				grp.DELETE("/transactions/:transactionId", financeHandler.DeleteTransaction)
+
+				grp.GET("/dashboard", financeHandler.GetDashboard)
+				grp.GET("/members/roles", financeHandler.ListMemberRoles)
+				grp.PUT("/members/:userId/role", financeHandler.UpdateMemberRole)
+			}
 		}
 
 		protected.GET("/notifications/in-app", userNotificationHandler.List)
