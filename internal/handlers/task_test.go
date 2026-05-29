@@ -337,6 +337,48 @@ func TestUpdateTask(t *testing.T) {
 	})
 }
 
+func TestCompleteRecurringTask(t *testing.T) {
+	setupTestDB()
+	router := setupTestRouter("test-secret")
+	user, token := createTestUser(t)
+
+	dueDate := time.Now().Add(24 * time.Hour)
+	rule := models.RecurrenceWeekly
+	nextDue := dueDate
+	task := models.Task{
+		Title:             "Weekly chore",
+		Type:              models.TaskTypeCasa,
+		UserID:            user.ID,
+		DueDate:           &dueDate,
+		RecurrenceRule:    &rule,
+		RecurrenceNextDue: &nextDue,
+	}
+	database.DB.Create(&task)
+
+	completed := true
+	reqBody := UpdateTaskRequest{
+		Title:     &task.Title,
+		Type:      &task.Type,
+		Completed: &completed,
+	}
+	jsonValue, _ := json.Marshal(reqBody)
+
+	req, _ := http.NewRequest("PUT", fmt.Sprintf("/api/v1/tasks/%d", task.ID), bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var updated models.Task
+	json.Unmarshal(w.Body.Bytes(), &updated)
+	assert.False(t, updated.Completed)
+	assert.NotNil(t, updated.RecurrenceRule)
+	assert.Equal(t, models.RecurrenceWeekly, *updated.RecurrenceRule)
+	assert.NotNil(t, updated.DueDate)
+	assert.True(t, updated.DueDate.After(dueDate))
+}
+
 func TestDeleteTask(t *testing.T) {
 	setupTestDB()
 	router := setupTestRouter("test-secret")

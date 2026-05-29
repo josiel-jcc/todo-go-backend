@@ -32,6 +32,7 @@ type CreateTaskRequest struct {
 	Priority    *string         `json:"priority" binding:"omitempty,oneof=baixa media alta urgente" example:"alta"` // Optional: task priority
 	DueDate               *string `json:"due_date" example:"2024-12-31T23:59:59Z"`                                    // ISO 8601 format
 	ReminderMinutesBefore *int    `json:"reminder_minutes_before" example:"10"`                                       // Optional: minutes before due_date (5,10,15,30,60); omit to use user default
+	RecurrenceRule        *string `json:"recurrence_rule" binding:"omitempty,oneof=daily weekly monthly" example:"weekly"`
 	UserID                *uint   `json:"user_id" example:"2"`                                                        // Optional: if provided, assign to another user
 	TagIDs                []uint  `json:"tag_ids"`                                                                    // Optional: IDs of tags to associate
 }
@@ -49,6 +50,7 @@ type UpdateTaskRequest struct {
 	Priority    *string          `json:"priority" binding:"omitempty,oneof=baixa media alta urgente" example:"urgente"`
 	DueDate               *string          `json:"due_date" example:"2024-12-31T23:59:59Z"`
 	ReminderMinutesBefore *int             `json:"reminder_minutes_before" example:"15"` // Optional: 5,10,15,30,60; null clears override
+	RecurrenceRule        **string         `json:"recurrence_rule" example:"daily"`      // Optional: daily, weekly, monthly; null clears
 	Completed             *bool            `json:"completed" example:"true"`
 	TagIDs                *[]uint          `json:"tag_ids"` // Optional: nil = no change, [] = remove all, [1,2] = set tags
 }
@@ -99,6 +101,12 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
+	var recurrenceRule *models.RecurrenceRule
+	if req.RecurrenceRule != nil && *req.RecurrenceRule != "" {
+		r := models.RecurrenceRule(*req.RecurrenceRule)
+		recurrenceRule = &r
+	}
+
 	createReq := &services.CreateTaskRequest{
 		Title:                 req.Title,
 		Description:           req.Description,
@@ -106,6 +114,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		Priority:              priority,
 		DueDate:               dueDate,
 		ReminderMinutesBefore: req.ReminderMinutesBefore,
+		RecurrenceRule:        recurrenceRule,
 		UserID:                req.UserID,
 		TagIDs:                req.TagIDs,
 	}
@@ -531,6 +540,18 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
+	var recurrenceRule **models.RecurrenceRule
+	if req.RecurrenceRule != nil {
+		if *req.RecurrenceRule == nil || **req.RecurrenceRule == "" {
+			recurrenceRule = new(*models.RecurrenceRule)
+			*recurrenceRule = nil
+		} else {
+			r := models.RecurrenceRule(**req.RecurrenceRule)
+			inner := &r
+			recurrenceRule = &inner
+		}
+	}
+
 	updateReq := &services.UpdateTaskRequest{
 		Title:                 req.Title,
 		Description:           req.Description,
@@ -538,6 +559,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		Priority:              priority,
 		DueDate:               dueDate,
 		ReminderMinutesBefore: req.ReminderMinutesBefore,
+		RecurrenceRule:        recurrenceRule,
 		Completed:             req.Completed,
 		TagIDs:                req.TagIDs,
 	}

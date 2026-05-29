@@ -47,13 +47,13 @@ Checklist dentro da tarefa — ideal para compras, reforma, viagem. Encaixa bem 
 |---------|---------|
 | Médio | Alto |
 
-### 4. Recorrência de tarefas
+### 4. Recorrência de tarefas ✅
 
-Tarefas que se repetem (diária, semanal, mensal). Muito pedido em apps domésticos. Começar simples: regra + próxima ocorrência.
+Implementado: `recurrence_rule` (daily, weekly, monthly) e `recurrence_next_due`. Ao concluir uma tarefa recorrente, a API reabre a tarefa com a próxima data. UI no formulário e badges no card/detalhe.
 
 | Esforço | Impacto |
 |---------|---------|
-| Médio–alto | Muito alto no uso diário |
+| ✅ Feito | Muito alto no uso diário |
 
 ### 5. Templates de tarefas
 
