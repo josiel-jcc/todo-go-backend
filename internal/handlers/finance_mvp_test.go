@@ -115,3 +115,60 @@ func TestFinanceMVP_ViewerCannotCreateAccount(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusForbidden, w.Code)
 }
+
+func TestFinanceMVP_TransferUpdatesBalances(t *testing.T) {
+	setupTestDB()
+	router := setupTestRouter("test-secret")
+	owner, token := createUserWithToken(t, "xfer", "xfer@test.com")
+	group := createGroupWithMembers(t, owner)
+
+	bootstrap := fmt.Sprintf("/api/v1/finance/groups/%d/health", group.ID)
+	req, _ := http.NewRequest(http.MethodGet, bootstrap, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	createAcc := func(name string) uint {
+		body, _ := json.Marshal(map[string]interface{}{
+			"name": name, "type": "checking", "initial_balance_cents": 10000,
+		})
+		r, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/finance/groups/%d/accounts", group.ID), bytes.NewBuffer(body))
+		r.Header.Set("Authorization", "Bearer "+token)
+		r.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, r)
+		require.Equal(t, http.StatusCreated, rec.Code)
+		var acc map[string]interface{}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &acc))
+		return uint(acc["id"].(float64))
+	}
+
+	fromID := createAcc("Origem")
+	toID := createAcc("Destino")
+	today := time.Now().Format("2006-01-02")
+	txBody, _ := json.Marshal(map[string]interface{}{
+		"type": "transfer", "account_id": fromID, "transfer_account_id": toID,
+		"amount_cents": 2500, "date": today, "visibility": "household",
+	})
+	req, _ = http.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/finance/groups/%d/transactions", group.ID), bytes.NewBuffer(txBody))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	req, _ = http.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/finance/groups/%d/accounts", group.ID), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	var accounts []map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &accounts))
+	balances := map[uint]int64{}
+	for _, a := range accounts {
+		balances[uint(a["id"].(float64))] = int64(a["balance_cents"].(float64))
+	}
+	assert.Equal(t, int64(7500), balances[fromID])
+	assert.Equal(t, int64(12500), balances[toID])
+}
