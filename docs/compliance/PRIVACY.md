@@ -1,6 +1,6 @@
 # Política de Privacidade
 
-**Última atualização:** 2026-05-27
+**Última atualização:** 2026-05-29
 
 Esta Política de Privacidade descreve como **[RAZAO_SOCIAL]** (CNPJ **[CNPJ]**, endereço: **[ENDERECO]**) — o **Controlador** — trata dados pessoais no aplicativo de tarefas (Todo App), em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
 
@@ -20,6 +20,7 @@ Esta Política de Privacidade descreve como **[RAZAO_SOCIAL]** (CNPJ **[CNPJ]**,
 | Web Push | endpoint da subscription, chaves de criptografia (`p256dh`, `auth`), user-agent opcional | Opt-in ao ativar push no navegador |
 | Grupos e colaboração | nome do grupo, participação, convites pendentes/aceitos, notificações in-app (ex.: convite de grupo, lembrete de tarefa) | Uso do app |
 | Conteúdo | títulos, descrições, comentários, tags, datas e prioridades de tarefas | Uso do app |
+| Financeiros (dados sensíveis) | contas (`financial_accounts`), categorias (`finance_categories`), lançamentos (`finance_transactions`: valor, descrição, data, visibilidade) | Módulo finanças do lar — **planejado / MVP** |
 | Técnicos | endereço IP, logs de acesso (via infraestrutura) | Uso automático |
 
 Não coletamos intencionalmente dados de crianças. O serviço é destinado a maiores de 18 anos.
@@ -39,6 +40,7 @@ Não coletamos intencionalmente dados de crianças. O serviço é destinado a ma
 | Exibir lembretes no sino in-app do aplicativo | Execução de contrato (entrega do serviço de lembretes solicitado) |
 | Segurança, prevenção a fraudes e logs | Legítimo interesse (Art. 7, IX), com balanceamento |
 | Cumprir obrigações legais | Obrigação legal (Art. 7, II) |
+| Organizar orçamento e finanças do lar familiar (contas, categorias, lançamentos) | Execução de contrato (Art. 7, V) — módulo **planejado / MVP** |
 
 ---
 
@@ -62,7 +64,23 @@ Tarefas podem ser atribuídas ou compartilhadas apenas com usuários que compart
 
 ---
 
-## 5. Retenção
+## 5. Dados financeiros do lar (planejado / MVP)
+
+O módulo de finanças do hub familiar trata **dados pessoais sensíveis** (Art. 5, II, LGPD), pois podem revelar situação econômica e padrão de consumo do titular e do lar.
+
+| Aspecto | Descrição |
+|---------|-----------|
+| **Finalidade** | Gestão de orçamento doméstico: cadastro de contas, categorias e lançamentos (receitas/despesas) vinculados ao **grupo familiar** (`group_id` / household). |
+| **Dados tratados** | Nome e tipo de conta; categorias do household; valor, descrição, data e categoria de cada lançamento; visibilidade (`private` ou `household`); papéis financeiros por membro (`admin`, `editor`, `viewer`). |
+| **Base legal** | Execução de contrato (Art. 7, V) — funcionalidade solicitada no âmbito do hub familiar. |
+| **Compartilhamento entre titulares** | Lançamentos com visibilidade **household** são acessíveis aos membros do mesmo grupo, conforme o **papel financeiro** (leitura ou edição). Lançamentos **private** permanecem visíveis apenas ao titular que os criou e não entram nos totais compartilhados do lar. |
+| **Status** | Tabelas e API em **planejamento (MVP)**; ver [ADR 0001](../adr/0001-finance-bounded-context.md). Política de retenção em [DATA-RETENTION.md](./DATA-RETENTION.md). |
+
+A exportação LGPD (`GET /users/me/export`) será **estendida** em fase posterior para incluir metadados e lançamentos financeiros do titular, quando o módulo estiver em produção.
+
+---
+
+## 6. Retenção
 
 Consulte [DATA-RETENTION.md](./DATA-RETENTION.md). Em resumo:
 
@@ -72,7 +90,7 @@ Consulte [DATA-RETENTION.md](./DATA-RETENTION.md). Em resumo:
 
 ---
 
-## 6. Seus direitos (Art. 18, LGPD)
+## 7. Seus direitos (Art. 18, LGPD)
 
 Você pode, mediante requisição a [EMAIL_PRIVACIDADE] ou pelo app:
 
@@ -87,30 +105,30 @@ Responderemos em prazo razoável, conforme a LGPD.
 
 ---
 
-## 7. Web Push — armazenamento de endpoints
+## 8. Web Push — armazenamento de endpoints
 
 Quando você ativa notificações push no navegador, o aplicativo envia ao nosso backend o **endpoint** fornecido pelo serviço de push do navegador (por exemplo, FCM ou Mozilla), as chaves de criptografia da subscription (`p256dh` e `auth`) e, opcionalmente, o identificador do navegador (`user_agent`). Esses dados são vinculados à sua conta para entregar lembretes de tarefas apenas a dispositivos que você registrou. Você pode revogar o consentimento desativando push nas configurações do app (que remove a subscription no servidor) ou bloqueando notificações nas configurações do sistema operacional/navegador. Endpoints inválidos ou expirados são excluídos automaticamente.
 
 ---
 
-## 8. Segurança
+## 9. Segurança
 
 Medidas incluem: senhas com hash bcrypt, autenticação JWT em cookie HttpOnly, HTTPS, controle de acesso por usuário e por grupo nas tarefas, rate limiting em rotas de autenticação e configuração restritiva em produção. Detalhes em [SECURITY.md](./SECURITY.md).
 
 ---
 
-## 9. Transferência internacional
+## 10. Transferência internacional
 
 O uso do Telegram, de serviços de push do navegador e de serviços em nuvem pode implicar transferência de dados para outros países. Garantimos mecanismos adequados conforme Arts. 33–36 da LGPD.
 
 ---
 
-## 10. Alterações
+## 11. Alterações
 
 Esta política pode ser atualizada. A data da última versão constará no topo. Alterações relevantes serão comunicadas no app ou por e-mail.
 
 ---
 
-## 11. Autoridade nacional
+## 12. Autoridade nacional
 
 Você pode apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD): https://www.gov.br/anpd

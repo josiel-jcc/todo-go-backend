@@ -34,6 +34,9 @@
 | Web Push (`push_subscriptions`) | Até revogação ou vigência da conta | Exclusão |
 | `terms_accepted_at` | Vigência da conta | Exclusão |
 | Logs de aplicação | 90 dias | Sem vínculo identificável quando possível |
+| `financial_accounts` | Vigência da conta e do grupo (household) — **planejado / MVP** | Exclusão dos registros do titular; contas do household conforme política do grupo |
+| `finance_categories` | Vigência do grupo (household) — **planejado / MVP** | Exclusão com o household ou quando não houver mais categorias em uso |
+| `finance_transactions` | Vigência da conta — **planejado / MVP** | Exclusão em cascata (ver seção 3.1) |
 
 ---
 
@@ -55,11 +58,22 @@ Ordem executada em **transação** (`UserService.DeleteAccount`):
 
 Sessões JWT revogadas no logout usam `token_denylist` conforme [SECURITY.md](./SECURITY.md); entradas expiram com o TTL do token.
 
+### 3.1 Finanças — cascata na exclusão de conta (**planejado / MVP**)
+
+Quando o módulo financeiro estiver implementado, a exclusão de conta do titular incluirá, em transação:
+
+1. `finance_transactions` onde `user_id = X` (lançamentos privados e do titular)
+2. `financial_accounts` pessoais onde `user_id = X` e não compartilhadas com o household
+3. Remoção de papéis financeiros do titular no grupo (`finance_group_members` ou equivalente)
+4. Lançamentos **household** criados pelo titular: exclusão ou anonimização do `user_id` conforme regra de negócio (a definir no MVP)
+
+**Exclusão de conta financeira (`financial_accounts`):** ao excluir uma conta no app, todos os `finance_transactions` vinculados a essa conta serão removidos em **cascata** (FK `ON DELETE CASCADE` ou serviço equivalente). Categorias (`finance_categories`) permanecem no nível do grupo até remoção explícita pelo `admin` financeiro.
+
 ---
 
 ## 4. Exportação (portabilidade)
 
-O endpoint `GET /users/me/export` inclui, entre outros: perfil (incl. preferências de notificação e lembrete), tarefas, tarefas compartilhadas, tags, comentários, grupos, convites de grupo e subscriptions Web Push ativas.
+O endpoint `GET /users/me/export` inclui, entre outros: perfil (incl. preferências de notificação e lembrete), tarefas, tarefas compartilhadas, tags, comentários, grupos, convites de grupo e subscriptions Web Push ativas. **Finanças (planejado / MVP):** extensão futura para contas, categorias e lançamentos do titular (incl. visibilidade `private` e `household` acessíveis ao usuário).
 
 ---
 
